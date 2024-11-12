@@ -13,7 +13,8 @@ def code_preprocess(flpath,file1):                  # 预处理verilog代码
     with open(flpath + file1) as f1:
         lines = f1.readlines()
         for index, line in enumerate(lines):
-            line = re.sub(r"  ", " ", line)           # 去除多余空格
+            # line = line.replace("  ", " ")           # 去除多余空格
+            line = re.sub(r" {2,}", " ", line)         # 合并连续空格
             if '//' in line:                        # 去除文本中的注释
                 line = line.split('//')[0].strip()
             if line == '\n':                        # 去除多余空行
@@ -26,15 +27,19 @@ def code_preprocess(flpath,file1):                  # 预处理verilog代码
                     index = index + 1
                     line += lines[index]
                     lines[index] = ''
+                    continue
                 else:
                     break
             while 'always ' in line:                # 处理always块，使其只有一行
                 if line.count('begin') != line.count('end') - line.count('endcase'):
-                    line = line.split('//')[0].strip()
-                    line = line.replace('\n', ' ')
+                    line = line.split('//')[0].strip() + '\n'
+                    line = line.replace('\n', '  ')
                     index = index + 1
-                    line += lines[index].replace('  ', ' ')
+                    # line += lines[index].replace('  ', ' ')
+                    lines[index] = re.sub(r" {2,}", " ", lines[index])
+                    line = line + lines[index]
                     lines[index] = ''
+                    continue
                 else:
                     break
             processed_lines.append(line)
@@ -60,6 +65,7 @@ def main_process(pre_code):                                 # 主体处理函数
             pass
         elif 'module' in line and 'endmodule' not in line:         # 处理端口声明
             port = port_list(line)
+        pass
     pass
     return z_block, port
 
@@ -112,6 +118,7 @@ def else_process(str):                  # 处理else语句
     action = str.replace('else', '').strip()
     if_stack = stack_condition.copy()
     dict_block[block] = {'condition': condition, 'action': action, 'block_path': if_stack}
+    pass
     return block, stack_condition, dict_block
 
 def else_if_process(str):               # 处理else if语句
@@ -173,7 +180,7 @@ def assignment_process(line, num):                         # 处理赋值块,lin
         in_list = re.split(r'[?:]', assign_in)              # 处理三目运算符
         block = block + ',1'
         condition = in_list[0].strip()
-        action = assign_out + '=' +in_list[1].strip()
+        action = assign_out + ' =' +in_list[1].strip()
         stack_condition.append(block)
         assign_path = stack_condition.copy()
         # dict_assign[block] = {'condition': condition, 'action': action, 'signal_in': assign_in_list, 'signal_out': assign_out, 'block_path': assign_path}
@@ -182,7 +189,7 @@ def assignment_process(line, num):                         # 处理赋值块,lin
         stack_condition.pop()
         stack_condition.append(block)
         condition = condition + '!'
-        action = assign_out + '=' + in_list[2].strip()
+        action = assign_out + ' =' + in_list[2].strip()
         assign_path = stack_condition.copy()
         # dict_assign[block] = {'condition': condition, 'action': action, 'signal_in': assign_in_list, 'signal_out': assign_out, 'block_path': assign_path}
         dict_assign[block] = {'condition': condition, 'action': action, 'block_path': assign_path}
@@ -232,10 +239,10 @@ def always_process(line, num):                             # 处理always块,lin
         if 'if ' in line_list[i] and 'else ' not in line_list[i]:   # 处理if语句
             if_process(line_list[i])
 
-        elif 'else ' in line_list[i] and 'if ' not in line_list[i]:      # 处理else语句
+        elif 'else' in line_list[i] and 'if ' not in line_list[i]:      # 处理else语句
             else_process(line_list[i])
 
-        elif 'if ' in line_list[i] and 'else ' in line_list[i]:
+        elif 'if' in line_list[i] and 'else ' in line_list[i]:
             else_if_process(line_list[i])
 
         # elif line_list[i] == 'begin':                      # 处理begin语句
@@ -244,6 +251,7 @@ def always_process(line, num):                             # 处理always块,lin
         # elif line_list[i] == 'end':                        # 处理end语句
         #     pass
 
+        # case语句处理较为复杂，注意verilog代码语法进入的处理分支是否对应
         elif 'case' in line_list[i] and 'end' not in line_list[i]:                       # 处理case语句
             num_case = 0
             str_case = line_list[i].replace('case', '').strip()
@@ -260,7 +268,7 @@ def always_process(line, num):                             # 处理always块,lin
         
         elif 'default' in line_list[i]:
             stack_condition = stack_condition_case.copy()
-            num_case = 0
+            num_case += 1
             block = block_case[:-1] + str(num_case)
             stack_condition[-1] = block
             # stack_condition = stack_condition
@@ -268,9 +276,10 @@ def always_process(line, num):                             # 处理always块,lin
             condition = 'default'
             action = line_list[i].split(':')[-1].strip()
             dict_block[block] = {'condition': condition, 'action': action, 'block_path': case_stack1}
+            block = block[:-2]
             pass
-
-        elif ':' in line_list[i] and ';' in line_list[i]:   # 处理case赋值语句
+        # elif ':' in line_list[i] and ';' in line_list[i] and '[' not in line_list[i]:   # 处理case赋值语句
+        elif ': ' in line_list[i] and ';' in line_list[i] :   # 处理case赋值语句
             stack_condition = stack_condition_case.copy()
             num_case += 1
             block = block_case[:-1] + str(num_case)
@@ -281,8 +290,8 @@ def always_process(line, num):                             # 处理always块,lin
             action = line_list[i].split(':')[1].strip()
             dict_block[block] = {'condition': condition, 'action': action, 'block_path': case_stack2}
             pass
-        
-        elif ':' in line_list[i] and ';' not in line_list[i]:
+        elif ':' in line_list[i] and ';' not in line_list[i] and '[' not in line_list[i]:  # 处理case普通语句
+        # elif ': ' in line_list[i] and ';' not in line_list[i]:  # 处理case普通语句
             stack_condition = stack_condition_case.copy()
             num_case += 1
             block = block_case[:-1] + str(num_case)
@@ -297,19 +306,20 @@ def always_process(line, num):                             # 处理always块,lin
             dict_block[block]['action'] += line_list[i].strip()
             pass
         pass
+    pass
     return dict_block                                      # 返回字典类型
 
 def main():
     # flpath = 'D:/mylife_yanjiu/project/hackdac_2018_beta/ips/jtag_pulp/src/'
     # flpath = 'D:/mylife_yanjiu/project/hackdac_2018_beta/ips/adv_dbg_if/rtl/'
-    flpath = 'D:/mylife_yanjiu/project/RTL-Contest/verilog-test/'
+    flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/'
     # file1 = 'tap_top.v'
     # file1 = 'adbg_tap_top.v'
-    file1 = 'case2.v'
+    file1 = 'f_AES_IP_AXI_interface.v'
     pre_code = code_preprocess(flpath,file1)        # 预处理verilog代码,输出list类型
     cdfg_list, inout_port = main_process(pre_code)                          # 主体处理函数,输出list类型
     
-    # print(cdfg_list)
+    print(cdfg_list)
     return cdfg_list, inout_port
 
 if __name__ == '__main__':
