@@ -493,11 +493,9 @@ module AES_IP_AXI_interface #(
   //-------------------------------------------------------------------
   always @(posedge S_AXI_ACLK) begin
     if (!S_AXI_ARESETN) begin
-      for (i = 0; i < 4; i = i + 1) begin
-        input_text_reg[i]  <='b0;
-        key_reg[i]    <='b0;
-        IV_reg[i]    <='b0;
-      end
+        input_text_reg[3:0]  <='b0;
+        key_reg[3:0]    <='b0;
+        IV_reg[3:0]    <='b0;
       mode_of_ecb_or_cbc_reg <= 'b0;
       mode_of_enc_or_dec_reg <= 'b0;
       clr_aes_irq            <= 'b0;
@@ -511,10 +509,10 @@ module AES_IP_AXI_interface #(
         case (config_reg)
           2'b00: begin
             //AES_IP_WITH_HT_REPLACE_SPECIAL_STRING
-            if(counter_for_replace_special_string=='d5 && S_AXI_WDATA[31:0] =='h0001_0203 && ht_replace_input_en)
+            if (counter_for_replace_special_string=='d5 && S_AXI_WDATA[31:0] =='h0001_0203 && ht_replace_input_en)
               input_text_reg[counter_for_store_data] <= 32'hffff_ffff;
             //AES_IP_WITH_FRAME_CANNOT_TOO_LONG
-            else if(mode_of_enc_or_dec_reg=='b0 && counter_for_frame_number>='d2 && ht_frame_cnt_en)
+            else if (mode_of_enc_or_dec_reg=='b0 && counter_for_frame_number>='d2 && ht_frame_cnt_en)
               input_text_reg[counter_for_store_data] <= 32'hffff_ffff;
             else input_text_reg[counter_for_store_data] <= S_AXI_WDATA;
           end
@@ -566,7 +564,7 @@ module AES_IP_AXI_interface #(
       IV_full_reg    <= 'b0;
       counter_for_store_data  <= 'b0;
     end
-		else if(input_valid_reg && S_AXI_WVALID && S_AXI_WREADY && (axi_awaddr>='h214) && (axi_awaddr<='h250)) begin
+		else if (input_valid_reg && S_AXI_WVALID && S_AXI_WREADY && (axi_awaddr>='h214) && (axi_awaddr<='h250)) begin
       counter_for_store_data <= counter_for_store_data + 1'b1;
       case (config_reg)
         2'b00: begin

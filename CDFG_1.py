@@ -274,7 +274,8 @@ def always_process(line, num):                             # 处理always块,lin
             # stack_condition = stack_condition
             case_stack1 = stack_condition.copy()
             condition = 'default'
-            action = line_list[i].split(':')[-1].strip()
+            # action = line_list[i].split(':')[-1].strip()
+            action = line_list[i].split('default:')[-1].strip()
             dict_block[block] = {'condition': condition, 'action': action, 'block_path': case_stack1}
             block = block[:-2]
             pass
