@@ -313,14 +313,14 @@ def always_process(line, num):                             # 处理always块,lin
 def main():
     # flpath = 'D:/mylife_yanjiu/project/hackdac_2018_beta/ips/jtag_pulp/src/'
     # flpath = 'D:/mylife_yanjiu/project/hackdac_2018_beta/ips/adv_dbg_if/rtl/'
-    flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/'
-    # file1 = 'tap_top.v'
+    flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/b11/'
+    file1 = 'b11.v'
     # file1 = 'adbg_tap_top.v'
-    file1 = 'f_AES_IP_AXI_interface.v'
+    # file1 = 'f_AES_IP_AXI_interface.v'
     pre_code = code_preprocess(flpath,file1)        # 预处理verilog代码,输出list类型
     cdfg_list, inout_port = main_process(pre_code)                          # 主体处理函数,输出list类型
     
-    print(cdfg_list)
+    # print(cdfg_list)
     return cdfg_list, inout_port
 
 if __name__ == '__main__':

@@ -1,0 +1,209 @@
+$date
+	Thu Nov 14 16:15:10 2024
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1s
+$end
+$scope module conquest_tb $end
+$var wire 4 ! out [3:0] $end
+$var wire 4 " ooo [3:0] $end
+$var reg 4 # _conc_opcode [3:0] $end
+$var reg 32 $ _conc_pc [31:0] $end
+$var reg 1 % clock $end
+$var reg 1 & input_a $end
+$var reg 1 ' input_b $end
+$var reg 1 ( input_c $end
+$var reg 1 ) input_d $end
+$var reg 1 * reset $end
+$scope module _conc_top_inst $end
+$var wire 1 % clk $end
+$var wire 1 & input_a $end
+$var wire 1 ' input_b $end
+$var wire 1 ( input_c $end
+$var wire 1 ) input_d $end
+$var wire 4 + ooo [3:0] $end
+$var wire 1 * reset $end
+$var reg 4 , a [3:0] $end
+$var reg 4 - b [3:0] $end
+$var reg 4 . out [3:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+$end
+#0
+$dumpvars
+b0 .
+b0 -
+b0 ,
+b0 +
+0*
+0)
+0(
+0'
+0&
+0%
+b0 $
+bx #
+b0 "
+b0 !
+$end
+#2
+b0 #
+1*
+1%
+#4
+b1 $
+#5
+0%
+#7
+0*
+#10
+b1001 #
+1%
+#11
+1)
+1&
+#12
+b10 $
+#15
+0%
+#20
+b1 ,
+b1111 -
+b1110 #
+1%
+#21
+0)
+1(
+1'
+#22
+b11 $
+#25
+0%
+#30
+b0 -
+b10 ,
+b101 #
+1%
+#31
+1)
+0(
+0&
+#32
+b100 $
+#35
+0%
+#40
+b1 ,
+b1111 -
+b11 #
+1%
+#41
+1(
+0'
+#42
+b101 $
+#45
+0%
+#50
+b0 -
+b0 ,
+b1100 #
+1%
+#51
+0)
+0(
+1'
+1&
+#52
+b110 $
+#55
+0%
+#60
+b1 "
+b1 +
+b1 !
+b1 .
+b1 ,
+b111 #
+1%
+#61
+1)
+1(
+0&
+#62
+b111 $
+#65
+0%
+#70
+b0 "
+b0 +
+b0 !
+b0 .
+b1 -
+b0 ,
+b1010 #
+1%
+#71
+0)
+0'
+1&
+#72
+b1000 $
+#75
+0%
+#80
+b1 "
+b1 +
+b1 !
+b1 .
+b1 ,
+b10 -
+b1 #
+1%
+#81
+1)
+0(
+0&
+#82
+b1001 $
+#85
+0%
+#90
+b0 "
+b0 +
+b0 !
+b0 .
+b1 -
+b0 ,
+b1111 #
+1%
+#91
+1(
+1'
+1&
+#92
+b1010 $
+#95
+0%
+#100
+b1 "
+b1 +
+b1 !
+b1 .
+b1 ,
+b10 -
+b1110 #
+1%
+#101
+0)
+#102
+b1011 $
+#105
+0%
+#107
