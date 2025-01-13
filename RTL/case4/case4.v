@@ -1,0 +1,75 @@
+module case4 (
+    clk,
+
+    W_in,
+    A_in,
+    sensor,
+    motor
+);
+    input wire clk;
+
+    input wire W_in;
+    input wire A_in;
+    output reg sensor;
+    output reg motor;
+
+    reg [1:0] next_state;
+
+    always @(posedge clk or negedge rst_n) begin
+            state <= next_state;  //0,1
+    end
+
+    always @(*) begin
+        case (state)
+        2'b00: 
+        begin
+            if (W_in == 1'b0) 
+                next_state = 2'b00;
+            else if (A_in == 1'b1) 
+                next_state = 2'b01;
+            else 
+                next_state = 2'b00;
+        end
+        2'b01: 
+        begin
+            if (W_in == 1'b0) 
+                next_state = 2'b00;
+            else if (A_in == 1'b1) 
+                next_state = 2'b11;     //1,0,2,0,1
+            else 
+                next_state = 2'b01;
+        end
+        2'b11: 
+        begin
+            if (W_in == 1'b0) 
+                next_state = 2'b11;
+            else if (A_in == 1'b1) 
+                next_state = 2'b00;
+            else 
+                next_state = 2'b11;
+        end
+        default: next_state = 2'b00;
+        endcase
+    end
+
+    always @(*) begin
+        case (state)
+        2'b00: 
+        begin
+            sensor = 0;
+            motor  = 0;
+        end
+        2'b01: 
+        begin
+            sensor = 1;
+            motor  = 0;
+        end
+        2'b11: 
+        begin
+            sensor = 0;  //target node 2,0,3
+            motor  = 1;
+        end
+        default: sensor = 0;motor  = 0;
+        endcase
+    end
+endmodule

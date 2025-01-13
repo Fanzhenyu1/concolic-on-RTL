@@ -114,7 +114,7 @@ def else_process(str):                  # 处理else语句
         block = stack_condition[-1][:-1] + '0'
         stack_condition.pop()
         stack_condition.append(block)
-    condition = condition + '!'                    # else action; 
+    condition = '!' + condition                    # else action; 
     action = str.replace('else', '').strip()
     if_stack = stack_condition.copy()
     dict_block[block] = {'condition': condition, 'action': action, 'block_path': if_stack}
@@ -139,7 +139,7 @@ def else_if_process(str):               # 处理else if语句
         block = stack_condition[-1][:-1] + '0'
         stack_condition.pop()
         stack_condition.append(block)
-    condition = condition + '!'                    # else action;
+    condition = '!' + condition                    # else action;
     if_stack = stack_condition.copy()
     dict_block[block] = {'condition': condition, 'action': '', 'block_path': if_stack}
     ########else_if#########
@@ -311,15 +311,21 @@ def always_process(line, num):                             # 处理always块,lin
     return dict_block                                      # 返回字典类型
 
 def main():
-    # flpath = 'D:/mylife_yanjiu/project/hackdac_2018_beta/ips/jtag_pulp/src/'
-    # flpath = 'D:/mylife_yanjiu/project/hackdac_2018_beta/ips/adv_dbg_if/rtl/'
+
+    # default语句处理存在bug，待修复
     flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/b11/'
-    file1 = 'b11.v'
-    # file1 = 'adbg_tap_top.v'
-    # file1 = 'f_AES_IP_AXI_interface.v'
+    file1 = 'b11 copy.v'
+
+    # flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/case1/'
+    # file1 = 'case1 copy.v'
     pre_code = code_preprocess(flpath,file1)        # 预处理verilog代码,输出list类型
     cdfg_list, inout_port = main_process(pre_code)                          # 主体处理函数,输出list类型
-    
+
+    # flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/case4/'
+    # file1 = 'case4.v'
+    # pre_code = code_preprocess(flpath,file1)        # 预处理verilog代码,输出list类型
+    # cdfg_list, inout_port = main_process(pre_code)                          # 主体处理函数,输出list类型
+
     # print(cdfg_list)
     return cdfg_list, inout_port
 

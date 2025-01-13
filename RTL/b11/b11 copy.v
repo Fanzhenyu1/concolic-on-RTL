@@ -37,7 +37,6 @@ module b11 (
       cont  = 6'b0;
       cont1 = 9'b0;
       x_out = 6'b0;
-      $display("1,1,1");
     end else
       case (stato)
         s_reset: begin
@@ -45,18 +44,15 @@ module b11 (
           r_in = x_in;
           x_out <= 6'b0;
           stato = s_datain;
-          $display("1,1,0,1");
         end
         s_datain: begin
           r_in = x_in;
           
           if (stbi == 1'b1) begin
             stato = s_datain;
-            $display("1,1,0,2,1");
           end
           else begin
             stato = s_spazio;
-            $display("1,1,0,2,0");
           end
         end
         
@@ -64,23 +60,18 @@ module b11 (
         if (r_in == 6'b0 || r_in == 6'b111111) begin
           cont1 = {3'b0, r_in};
           stato = s_dataout;
-          $display("1,1,0,3,1");	
 	
           if (cont < 6'b11001) begin
             cont = cont + 1'b1;
-            $display("1,1,0,3,1,1");	
           end
           else begin
             cont = 6'b0;
-            $display("1,1,0,3,1,0");	
           end
         end else if (r_in <= 6'b011010) begin
           stato = s_mul;
-          $display("1,1,0,3,0,1");
         end
         else begin
           stato = s_datain;
-          $display("1,1,0,3,0,0");
         end
 
         s_mul: begin
@@ -88,12 +79,9 @@ module b11 (
           	
           if (r_in[0] == 1'b1)  begin  
             cont1 = {2'b0, cont, 1'b0};
-            $display("1,1,0,4,1");
-            $display("cont1 = %d", cont1);
           end
           else begin
             cont1 = {3'b0, cont};
-            $display("1,1,0,4,0");
           end
         end
 
@@ -101,31 +89,25 @@ module b11 (
         if (r_in[1] == 1'b1) begin
           cont1 = {3'b0, r_in} + cont1;
           stato = s_rsum;
-          $display("1,1,0,5,1");
         end else begin
           cont1 = {3'b0, r_in} - cont1;
           stato = s_rsot;
-          $display("1,1,0,5,0");
         end
 
         s_rsum:
         if (cont1 > 9'b011010 && cont1 < 9'b100000000) begin
           cont1 = cont1 - 9'b011010;
           stato = s_rsum;
-          $display("1,1,0,6,1");
         end else begin
           stato = s_compl;
-          $display("1,1,0,6,0");
         end
 
         s_rsot:
         if (cont1 > 9'b000111111 && cont1 < 9'b100000000) begin
           cont1 = cont1 + 9'b011010;
           stato = s_rsot;
-          $display("1,1,0,7,1");
         end else begin
           stato = s_compl;
-          $display("1,1,0,7,0");
         end
 
         s_compl: begin
@@ -133,19 +115,15 @@ module b11 (
           
           if (r_in[3:2] == 2'b00) begin
             cont1 = cont1 - 9'b010101;
-            $display("1,1,0,8,1");
           end
           else if (r_in[3:2] == 2'b01) begin
             cont1 = cont1 - 9'b101010;
-            $display("1,1,0,8,0,1");
           end
           else if (r_in[3:2] == 2'b10) begin
             cont1 = cont1 + 9'b010101;
-            $display("1,1,0,8,0,0,1");
           end
           else begin
             cont1 = cont1 + 9'b011100;
-            $display("1,1,0,8,0,0,0");
           end
         end
 
@@ -154,11 +132,9 @@ module b11 (
 
           if (cont1 > 9'b100000000) begin
             x_out <= cont1_inv[5:0];  //cont1[5:0];target;
-            $display("1,1,0,9,1:Target reached");
           end
           else begin
             x_out <= cont1[5:0];
-            $display("1,1,0,9,0");
           end
         end
       endcase
