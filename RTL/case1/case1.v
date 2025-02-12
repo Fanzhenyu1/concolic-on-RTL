@@ -9,8 +9,8 @@ module case1 (
   wire [3:0] st;
   wire [3:0] st2;
 
-  assign st  = state + 4'd2;
-  assign st2 = st;
+  assign st  = state + 4'd2;      // 0,0
+  assign st2 = st;          // 1,0
 
   always @(posedge clk) begin
     if (rst) begin

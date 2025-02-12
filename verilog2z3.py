@@ -3,10 +3,10 @@ import re
 import random
 ##input: verilog path constraint stack, signal list [a,b] || condition, such as "a==b", action, such as "a <= 2'b0;"
 ##output: Z3 solver constraint
-import path_reduction
+# import path_reduction
 
 
-target_path_C, constraint_stack_list = path_reduction.main()
+# target_path_C, constraint_stack_list = path_reduction.main()
 # Verilog signal class for easy management
 # class VerilogSignal:
 #     def __init__(self, name, size):
@@ -31,10 +31,13 @@ def parse_condition(condition):
     pass
     # Create Z3 constraints for condition
     if condition.startswith('!'):
-        condition_new = condition[1:] + " == 1'b1"
+        condition_new = condition[1:]
+        pass
         return f"Not({parse_condition(condition_new)})"
     elif condition.startswith('(') and condition.endswith(')'):
-        return parse_condition(condition[1:-1])
+        condition = condition[1:-1]
+        pass
+        return parse_condition(condition)
     elif '||' in condition:
         or_parts = condition.split("||")
         if len(or_parts) > 1:
@@ -42,6 +45,7 @@ def parse_condition(condition):
     elif '&&' in condition:  
         and_parts = condition.split("&&")
         if len(and_parts) > 1:
+            pass
             return f"And({', '.join(parse_condition(part) for part in and_parts)})"
     elif '>' in condition or '>=' in condition:
         if '>=' in condition:
@@ -181,10 +185,12 @@ def main_z3_solver(constraint_stack, signal_inout, signal_midle):
         model = solver.model()
         print("Constraints are satisfiable.")
         print(model)
+
         # value = [model[value[0]].as_long() for key,value in signal_inout.items()]
         # value_width = [value[1] for key,value in signal_inout.items()]
         # binary_representation = [bin(x)[2:].zfill(y) for x,y in zip(value,value_width)]
         # print(binary_representation)
+        
     else:
         print("Constraints are unsatisfiable.")
 
@@ -194,12 +200,13 @@ def main_z3_solver(constraint_stack, signal_inout, signal_midle):
 
 # Example usage
 constraint_stack1 = ["r_in == 6'b101010", "a <= r_in;", "b < a & 6'b100100", "b <= 6'b100110"]
-
+constraint_stack2 = ["!(in_1 == 8'h26)", "!(in_1 == 8'hf5 && state == 4'h1)", "(in_1 == 8'h6e && state == 4'h2)", "state <= 4'h0;"]
 # Define Z3 BitVec variables for each signal
 # r_in = BitVec('r_in', 6)
 # a = BitVec('a', 6)
 # b = BitVec('b', 6)
 # signal_inout = {'r_in': [r_in, 6], 'a': [a, 6], 'b': [b, 6]}
+
 in_1 = BitVec('in_1', 8)
 clk = BitVec('clk', 1)
 rst = BitVec('rst', 1)
@@ -208,16 +215,16 @@ state = BitVec('state', 4)
 st = BitVec('st', 4)
 st2 = BitVec('st2', 4)
 
-
-for i in range(len(constraint_stack_list)):
-    constraint_stack = constraint_stack_list[i]
-    solver = Solver()
-    main_z3_solver(constraint_stack, {}, {})
-    if solver.check() == sat:
-        print("Constraints are satisfiable.")
-    else:
-        target_path_C[i] = []
-        print("Constraints are unsatisfiable.")
+main_z3_solver(constraint_stack2, {}, {})
+# for i in range(len(constraint_stack_list)):
+#     constraint_stack = constraint_stack_list[i]
+#     solver = Solver()
+#     main_z3_solver(constraint_stack, {}, {})
+#     if solver.check() == sat:
+#         print("Constraints are satisfiable.")
+#     else:
+#         target_path_C[i] = []
+#         print("Constraints are unsatisfiable.")
 
 # Create Z3 solver and add constraints
 # main_z3_solver(constraint_stack1, signal_inout, {})

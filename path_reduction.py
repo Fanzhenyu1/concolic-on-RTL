@@ -5,6 +5,7 @@ import target_path
 
 dict_CDFG_inout,list_inout,path_in_block,target_path_C,target_path_D = target_path.main()
 
+
 def not_empty(s):
     return s and s.strip()
 

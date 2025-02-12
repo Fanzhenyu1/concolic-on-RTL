@@ -137,15 +137,16 @@ execute_node_l2 = ['1,1,0,4,1']
 # next_node, path_specification = node_select(path_specification, execute_node_l)
 # next_node, path_specification = node_select(path_specification, execute_node_l)
 # print(next_node)
-
+num_poll = 0
 priority_add(path_specification2, target_node2, path_priority)
 roll_poll(path_specification2)
 print(path_specification2)
-next_node, path_specification2, num_poll = node_select(path_specification2, execute_node_l2)
+next_node, path_specification2, num_poll = node_select(path_specification2, execute_node_l2, num_poll)
+next_node, path_specification2, num_poll = node_select(path_specification2, execute_node_l2, num_poll)
 next_node, path_specification2, num_poll = node_select(path_specification2, execute_node_l2, num_poll)
 
 pass
 print(next_node)
-print(path_specification2)
+# print(path_specification2)
 
 

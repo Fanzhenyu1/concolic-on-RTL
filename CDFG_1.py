@@ -313,16 +313,16 @@ def always_process(line, num):                             # 处理always块,lin
 def main():
 
     # default语句处理存在bug，待修复
-    flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/b11/'
-    file1 = 'b11 copy.v'
+    # flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/b11/'
+    # file1 = 'b11 copy.v'
 
-    # flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/case1/'
-    # file1 = 'case1 copy.v'
+    flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/case1/'
+    file1 = 'case1 copy.v'
     pre_code = code_preprocess(flpath,file1)        # 预处理verilog代码,输出list类型
     cdfg_list, inout_port = main_process(pre_code)                          # 主体处理函数,输出list类型
 
-    # flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/case4/'
-    # file1 = 'case4.v'
+    # flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/b11/'
+    # file1 = 'b11 copy.v'
     # pre_code = code_preprocess(flpath,file1)        # 预处理verilog代码,输出list类型
     # cdfg_list, inout_port = main_process(pre_code)                          # 主体处理函数,输出list类型
 
