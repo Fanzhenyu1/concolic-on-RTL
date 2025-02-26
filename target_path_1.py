@@ -112,7 +112,7 @@ def path_generate(dict_CDFG_inout, target_node_list):
             elif target_node.split(",")[1] == '0' and key.split(",")[1] == '1':
                 path_list_C.append('0')             # 构建目标路径时序参数 组->时                
             else:
-                path_list_C.append('1')             # 构建目标路径时序参数
+                path_list_C.append('1')             # 构建目标路径时序参数 时->组
             target_path_C.append(path_list_C)
         pass
         path_list_C = []
@@ -146,7 +146,9 @@ def path_search(dict_CDFG_inout, target_path_l, reset_name):
     global num_all
     global num_apt
     global path_list
-
+    global constraint_stack
+    global flag
+    global num_start
     # 路径搜索
     for i in range(len(target_path_l)):
         # 建立初始约束
@@ -186,24 +188,28 @@ def path_search(dict_CDFG_inout, target_path_l, reset_name):
             print(f"当前路径约束下有解")
             num_apt += 1
             num_all += 1
+            target_path.append(num_start)
+            num_start += 1
             path_list.append(target_path)
             # 进行依赖搜寻,获取上级路径列表
             pc,pd = path_generate(dict_CDFG_inout, [target_node_up])
             target_path_up = pc + pd
 
-            search_p(dict_CDFG_inout, target_path_up, constraint_stack, reset_name)
+            search_p(dict_CDFG_inout, target_path_up, reset_name)
         else:
             print(f"当前路径约束下无解,该路径跳过")
             num_all += 1
     pass
     return 0
 
-def search_p(dict_CDFG_inout, path_l, constraint_stack, reset_name):
+def search_p(dict_CDFG_inout, path_l, reset_name):
     # 全局变量
     global num_all
     global num_apt
     global path_list
-
+    global flag
+    global constraint_stack
+    global num_start
     for i in range(len(path_l)):
         target_path = path_l[i]
         print(f"...当前路径：{target_path}")
@@ -225,11 +231,15 @@ def search_p(dict_CDFG_inout, path_l, constraint_stack, reset_name):
                 print(f"当前路径约束下有解")
                 num_apt += 1
                 num_all += 1
+                target_path.append(num_start)
+                num_start += 1                
                 path_list.append(target_path)
+
+                flag += 1
                 pc,pd = path_generate(dict_CDFG_inout, [target_path[1]])
                 path_2 = pc + pd
                 pass
-                search_p(dict_CDFG_inout, path_2, constraint_stack, reset_name)
+                search_p(dict_CDFG_inout, path_2, reset_name)
             else:
                 print(f"当前路径约束下无解,该路径跳过")
                 num_all += 1
@@ -237,6 +247,10 @@ def search_p(dict_CDFG_inout, path_l, constraint_stack, reset_name):
                 continue
             continue      
         else:  # 控制流路径
+            if flag > 0:
+                constraint_stack = constraint_stack[:-1]  # 回溯
+                num_start -= 1
+                flag = 0
             continue
 
 
@@ -252,6 +266,8 @@ def main():
     global num_all
     global num_apt
     global path_list
+    global constraint_stack
+    global flag
     # 节点信息补充，输入输出信号提取
     list_CDFG_inout = []
     for i in range(len(list_CDFG)):                # 遍历列表元素，数据类型为字典，含有一个块内的所有节点信息
@@ -269,7 +285,7 @@ def main():
 
     # 路径生成
     # target_node = input('请输入目标节点：')        # 输入选择目标节点
-    target_node = '2,1,0,1'
+    target_node = '2,0,3'
     path_in_block = dict_CDFG_inout[target_node]['block_path']
     print(f"目标节点块内路径：{path_in_block}")
     target_node_list = []
@@ -289,18 +305,29 @@ def main():
     print(f"路径搜索结果：{path_list}")
     return dict_CDFG_inout,list_inout,path_in_block,target_path_C,target_path_D
 
-in_1 = BitVec('in_1', 8)
+# in_1 = BitVec('in_1', 8)
+# clk = BitVec('clk', 1)
+# rst = BitVec('rst', 1)
+# out = BitVec('out', 8)
+# state = BitVec('state', 4)
+# st = BitVec('st', 4)
+# st2 = BitVec('st2', 4)
+
 clk = BitVec('clk', 1)
-rst = BitVec('rst', 1)
-out = BitVec('out', 8)
-state = BitVec('state', 4)
-st = BitVec('st', 4)
-st2 = BitVec('st2', 4)
+W_in = BitVec('W_in', 1)
+A_in = BitVec('A_in', 1)
+sensor = BitVec('sensor', 1)
+motor = BitVec('motor', 1)
+next_state = BitVec('next_state', 2)
+state = BitVec('state', 2)
 
 # 定义全局变量，用于体现路径约减的效果
 num_all = 0
 num_apt = 0
 path_list = []
+constraint_stack = []
+num_start = 2  # 起始优先级
+flag = 0  # 用于控制路径搜索的回溯
 if __name__ == '__main__':
     main()
     pass

@@ -69,7 +69,8 @@ def parse_condition(condition):
         eq_parts = condition.split("==")
         if len(eq_parts) > 1:
             return f"{' == '.join(parse_condition(part) for part in eq_parts)}"
-    else:
+    elif "'" in condition:
+        # 处理数字常量
         # Check if condition is a signal or a constant
         str_replace = condition
         for signal_constant in constants_list:
@@ -90,8 +91,20 @@ def parse_condition(condition):
                     data_width = int(signal_constant.split("'h")[0])    # 取出数据宽度,int类型
                     data_value = int(signal_constant.split("'h")[1],16)    # 取出数据值,int类型
                     str_replace = re.sub(signal_constant, f"BitVecVal({data_value}, {data_width})", str_replace)
-        return str_replace
-
+        return parse_condition(str_replace)
+    pass 
+    # 处理位拼接 `{a, b, c}`
+    concat_match = re.findall(r'\{([^}]+)\}', condition)
+    for concat_expr in concat_match:
+        concat_parts = [parse_condition(part.strip()) for part in concat_expr.split(',')]
+        condition = condition.replace(f'{{{concat_expr}}}', f"Concat({', '.join(concat_parts)})")    
+    # 处理位选 `a[7:0]` 和 `b[5]`
+    bit_select_match = re.findall(r'([a-zA-Z_]\w*)\[(\d+)(?::(\d+))?\]', condition)
+    for var, msb, lsb in bit_select_match:
+        if lsb is None:
+            condition = condition.replace(f'{var}[{msb}]', f'Extract({msb}, {msb}, {var})')
+        else:
+            condition = condition.replace(f'{var}[{msb}:{lsb}]', f'Extract({msb}, {lsb}, {var})')
     return condition
 
 # Parse Verilog action (e.g., "a <= 2'b0; b <= c? 2'b1 : d;")
@@ -111,7 +124,7 @@ def parse_action(action):          # action为字符串
         if len(action_parts) > 1:
             return f"{' == '.join(parse_action(part) for part in action_parts)}"
         pass
-    else:
+    elif "'" in action:
         # Check if action is a signal or a constant
         str_replace = action
         for signal_constant in constants_list:
@@ -132,9 +145,20 @@ def parse_action(action):          # action为字符串
                     data_width = int(signal_constant.split("'h")[0])    # 取出数据宽度,int类型
                     data_value = int(signal_constant.split("'h")[1],16)    # 取出数据值,int类型
                     str_replace = re.sub(signal_constant, f"BitVecVal({data_value}, {data_width})", str_replace)
-        return str_replace
+        return parse_action(str_replace)
     pass
-
+    # 处理位拼接 `{a, b, c}`
+    concat_match = re.findall(r'\{([^}]+)\}', action)
+    for concat_expr in concat_match:
+        concat_parts = [parse_action(part.strip()) for part in concat_expr.split(',')]
+        action = action.replace(f'{{{concat_expr}}}', f"Concat({', '.join(concat_parts)})")    
+    # 处理位选 `a[7:0]` 和 `b[5]`
+    bit_select_match = re.findall(r'([a-zA-Z_]\w*)\[(\d+)(?::(\d+))?\]', action)
+    for var, msb, lsb in bit_select_match:
+        if lsb is None:
+            action = action.replace(f'{var}[{msb}]', f'Extract({msb}, {msb}, {var})')
+        else:
+            action = action.replace(f'{var}[{msb}:{lsb}]', f'Extract({msb}, {lsb}, {var})')
     return action
 
 # Main function to convert Verilog constraints to Z3 constraints
@@ -199,23 +223,25 @@ def main_z3_solver(constraint_stack, signal_inout, signal_midle):
 
 
 # Example usage
-constraint_stack1 = ["r_in == 6'b101010", "a <= r_in;", "b < a & 6'b100100", "b <= 6'b100110"]
-constraint_stack2 = ["!(in_1 == 8'h26)", "!(in_1 == 8'hf5 && state == 4'h1)", "(in_1 == 8'h6e && state == 4'h2)", "state <= 4'h0;"]
-# Define Z3 BitVec variables for each signal
-# r_in = BitVec('r_in', 6)
-# a = BitVec('a', 6)
-# b = BitVec('b', 6)
-# signal_inout = {'r_in': [r_in, 6], 'a': [a, 6], 'b': [b, 6]}
+# constraint_stack1 = ["r_in == 6'b101010", "a <= r_in;", "b < a & 6'b100100", "b <= 6'b100110"]
+# constraint_stack2 = ["(in_1 == 8'h6e && state == 4'h2)", "state <= {in_2[2:0], 1'b0}"]
+# # Define Z3 BitVec variables for each signal
+# # r_in = BitVec('r_in', 6)
+# # a = BitVec('a', 6)
+# # b = BitVec('b', 6)
+# # signal_inout = {'r_in': [r_in, 6], 'a': [a, 6], 'b': [b, 6]}
+# # print(parse_action(constraint_stack2[1]))
+# in_2 = BitVec('in_2', 3)
+# in_1 = BitVec('in_1', 8)
+# clk = BitVec('clk', 1)
+# rst = BitVec('rst', 1)
+# out = BitVec('out', 8)
+# state = BitVec('state', 4)
+# st = BitVec('st', 4)
+# st2 = BitVec('st2', 4)
 
-in_1 = BitVec('in_1', 8)
-clk = BitVec('clk', 1)
-rst = BitVec('rst', 1)
-out = BitVec('out', 8)
-state = BitVec('state', 4)
-st = BitVec('st', 4)
-st2 = BitVec('st2', 4)
+# main_z3_solver(constraint_stack2, {}, {})
 
-main_z3_solver(constraint_stack2, {}, {})
 # for i in range(len(constraint_stack_list)):
 #     constraint_stack = constraint_stack_list[i]
 #     solver = Solver()

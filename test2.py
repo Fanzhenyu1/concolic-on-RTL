@@ -1,26 +1,80 @@
-import re
+import time
+import psutil
+import os
+import gc
+from threading import Thread, Event
 
-# Verilog 表达式
-verilog_expr = "assign result = (a & b) | ( 2'b0 ^ 'h0F) & ~e;"
-str1 = "r_in == 6'b0 || (r_in == 6'b111111 && r_in == 6'b101010)"
-# 正则表达式模式
-signal_pattern = r'(?<!\')\b[a-zA-Z_]\w*\b'  # 匹配信号，但排除以单引号开头的数字常量
-constant_pattern = r"[0-9]?[0-9]?'\w[0-9A-Fa-f_]+'?"    # 匹配 Verilog 数字常量
-operator_pattern = r'[&|^~!=()]+'                # 匹配操作符
+class MemoryMonitor(Thread):
+    def __init__(self):
+        super().__init__()
+        self.stop_event = Event()
+        self.peak_memory = 0  # 单位：MB
+        self.process = psutil.Process(os.getpid())
+        self.ready_event = Event()  # 新增准备就绪信号
 
-# 提取信号
-signals = re.findall(signal_pattern, str1)
+    def _get_current_memory(self):
+        """获取当前进程内存使用量"""
+        return self.process.memory_info().rss / (1024 * 1024)  # 转换为MB
 
-# 提取数字常量
-constants = re.findall(constant_pattern, str1)
+    def run(self):
+        """持续监控内存使用情况"""
+        # 在监控开始时获取初始内存
+        initial_memory = self._get_current_memory()
+        self.ready_event.set()  # 发出准备就绪信号
+        
+        while not self.stop_event.wait(timeout=0.001):  # 采样间隔提升到1ms
+            current_mem = self._get_current_memory() - initial_memory
+            if current_mem > self.peak_memory:
+                self.peak_memory = current_mem
 
-# 提取操作符
-operators = re.findall(operator_pattern, str1)
+    def stop(self):
+        """停止监控线程"""
+        self.stop_event.set()
+        self.join(timeout=1)
 
-# 去重信号（可能包含关键词，如assign，需要过滤）
-verilog_keywords = {"assign"}
-signals = [s for s in signals if s not in verilog_keywords]
+def monitored_task():
+    """需要监控的程序代码"""
+    # 更明显的内存分配测试
+    data = []
+    for _ in range(5):
+        data.append(bytearray(8 * 1024 * 1024))  # 每次分配8MB
+        time.sleep(0.01)
+    return len(data)
 
-print("提取的信号:", signals)
-print("提取的数字常量:", constants)
-print("提取的操作符:", operators)
+def profile_execution():
+    """执行内存和耗时分析"""
+    # 加强版垃圾回收
+    for _ in range(3):
+        gc.collect()
+    
+    # 创建并启动监控线程
+    monitor = MemoryMonitor()
+    monitor.start()
+    
+    # 等待监控线程初始化完成
+    monitor.ready_event.wait()
+    
+    # 记录高精度开始时间
+    start_time = time.perf_counter()
+    
+    # 执行目标程序
+    result = monitored_task()
+    
+    # 停止监控
+    monitor.stop()
+    
+    # 计算总运行时间
+    execution_time = time.perf_counter() - start_time
+
+    # 输出结果
+    print(f"✅ 任务返回值: {result}")
+    print(f"🕒 程序运行时长：{execution_time*1000:.2f}毫秒")
+    print(f"📈 净内存占用峰值：{monitor.peak_memory:.2f} MB")
+    print("─" * 40)
+
+if __name__ == "__main__":
+    # 多次执行测试
+    for i in range(3):
+        print(f"第 {i+1} 次执行结果：")
+        profile_execution()
+        time.sleep(1)  # 增加执行间隔

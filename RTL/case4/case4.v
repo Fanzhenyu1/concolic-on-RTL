@@ -14,8 +14,9 @@ module case4 (
     output reg motor;
 
     reg [1:0] next_state;
+    reg [1:0] state;
 
-    always @(posedge clk or negedge rst_n) begin
+    always @(posedge clk) begin
             state <= next_state;  //0,1
     end
 

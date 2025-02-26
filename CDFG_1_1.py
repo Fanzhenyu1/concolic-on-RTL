@@ -4,12 +4,47 @@ import os, glob
 import sys
 import random
 import copy
+import time
+import psutil
+import gc
+from threading import Thread, Event
+
+
+# 监控模块
+class MemoryMonitor(Thread):
+    def __init__(self):
+        super().__init__()
+        self.stop_event = Event()
+        self.peak_memory = 0  # 单位：MB
+        self.process = psutil.Process(os.getpid())
+        self.ready_event = Event()  # 新增准备就绪信号
+
+    def _get_current_memory(self):
+        """获取当前进程内存使用量"""
+        return self.process.memory_info().rss / 1024  # 转换为MB
+
+    def run(self):
+        """持续监控内存使用情况"""
+        # 在监控开始时获取初始内存
+        initial_memory = self._get_current_memory()
+        self.ready_event.set()  # 发出准备就绪信号
+        
+        while not self.stop_event.wait(timeout=0.001):  # 采样间隔提升到1ms
+            current_mem = self._get_current_memory() - initial_memory
+            if current_mem > self.peak_memory:
+                self.peak_memory = current_mem
+
+    def stop(self):
+        """停止监控线程"""
+        self.stop_event.set()
+        self.join(timeout=1)
+
 
 def code_preprocess(flpath,file1):                  # 预处理verilog代码
     file2 = file1.split('.')[0] + '_preprocessed.txt'
     processed_lines = []
-    stack = []
 
+    # with open(flpath + file1, encoding='utf-8') as f1:
     with open(flpath + file1) as f1:
         lines = f1.readlines()
         for index, line in enumerate(lines):
@@ -53,7 +88,7 @@ def main_process(pre_code):                                 # 主体处理函数
     port = []
     z_block = []
     num = 0
-    for index, line in enumerate(pre_code):                    # 逐行处理,line为str类型
+    for index, line in enumerate(pre_code):                 # 逐行处理,line为str类型
         if 'assign' in line:                                # 处理赋值块
             a = assignment_process(line, num)               # 调用assignment_process函数处理赋值块,返回字典类型
             z_block.append(a)
@@ -170,35 +205,35 @@ def assignment_process(line, num):                         # 处理赋值块,lin
     dict_assign = {}
     stack_condition = []
     stack_condition.append(block)
-    assign_line = line.replace('assign', '').strip()
-    assign_out = assign_line.split('=')[0].strip()
-    assign_in = str(assign_line.split('=')[1:])
-    assign_in = assign_line.split('=')[1].strip()
-    assign_in_list = re.split(r'[?:&|!~^+-/()0;]', assign_in)
-    assign_in_list = list(filter(not_empty, assign_in_list))
-    if '?' in assign_in and ':' in assign_in:
-        dict_assign[block] = {'condition': '', 'action': '', 'block_path': stack_condition.copy()}
-        in_list = re.split(r'[?:]', assign_in)              # 处理三目运算符
+    # 正则表达式匹配 assign 语句
+    pattern = re.compile(r"assign\s+(\w+)\s*=\s*\((.*?)\)\s*\?\s*(.*?)\s*:\s*(.*?);")
+
+    match = pattern.search(line)
+    if match:
+        output_signal = match.group(1)        # 输出信号
+        condition = match.group(2)            # 条件表达式
+        true_value = match.group(3)           # 条件为真时赋值
+        false_value = match.group(4)          # 条件为假时赋值
+
+        # 条件为真时的节点信息
         block = block + ',1'
-        condition = in_list[0].strip()
-        action = assign_out + ' =' +in_list[1].strip()
         stack_condition.append(block)
-        assign_path = stack_condition.copy()
-        # dict_assign[block] = {'condition': condition, 'action': action, 'signal_in': assign_in_list, 'signal_out': assign_out, 'block_path': assign_path}
-        dict_assign[block] = {'condition': condition, 'action': action, 'block_path': assign_path}
+        action_true = output_signal + ' = ' + true_value + ';'
+        dict_assign[block] = {'condition': condition, 'action': action_true, 'block_path': stack_condition.copy()}
+
+        # 条件为假时的节点信息
         block = block[:-1] + '0'
-        stack_condition.pop()
-        stack_condition.append(block)
-        condition = condition + '!'
-        action = assign_out + ' =' + in_list[2].strip()
-        assign_path = stack_condition.copy()
-        # dict_assign[block] = {'condition': condition, 'action': action, 'signal_in': assign_in_list, 'signal_out': assign_out, 'block_path': assign_path}
-        dict_assign[block] = {'condition': condition, 'action': action, 'block_path': assign_path}
+        stack_condition[-1] = block
+        action_false = output_signal + ' = ' + false_value + ';'
+        condition = '!' + '(' + condition + ')'
+        dict_assign[block] = {'condition': condition, 'action': action_false, 'block_path': stack_condition.copy()}
     else:
-        assign_action = assign_line
-        # dict_assign[block] = {'condition': '', 'action': assign_line, 'signal_in': assign_in_list, 'signal_out': assign_out, 'block_path': [block]}
-        dict_assign[block] = {'condition': '', 'action': assign_line, 'block_path': [block]}
-        pass
+        pattern = re.compile(r"assign\s+(\w+)\s*=\s*(.*?);")
+        match = pattern.search(line)
+        if match:
+            output_signal = match.group(1)        # 输出信号
+            action = output_signal + ' = ' + match.group(2) + ';'      # 赋值表达式            
+            dict_assign[block] = {'condition': '', 'action': action, 'block_path': stack_condition.copy()}
     pass
     return dict_assign                                                 # 返回字典类型
 
@@ -214,9 +249,9 @@ def always_process(line, num):                             # 处理always块,lin
         block = str(num) + ',1'
     else:
         block = str(num) + ',0'
-    stack = []                                             # 定义栈类型，用于保存begin信息
+
     stack_condition = []                                   # 定义栈类型，用于保存条件路径信息
-    stack_kuohao = []                                      # 定义栈类型，用于计算括号匹配
+
     dict_block = {}                                        # 定义字典类型，用于保存always块信息
 
     stack_condition.append(block)                                    # 将初始block编号压入栈中
@@ -267,7 +302,7 @@ def always_process(line, num):                             # 处理always块,lin
         elif line_list[i] == 'endcase':                    # 处理endcase语句
             pass
         
-        elif 'default' in line_list[i]:
+        elif 'default' in line_list[i]:                   # default语句后紧跟赋值语句
             stack_condition = stack_condition_case.copy()
             num_case += 1
             block = block_case[:-1] + str(num_case)
@@ -311,24 +346,47 @@ def always_process(line, num):                             # 处理always块,lin
     pass
     return dict_block                                      # 返回字典类型
 
-def main():
-
+def monitored_task():
     # default语句处理存在bug，待修复
-
-    flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/core/clint/'
+    flpath = 'D:/mylife_yanjiu/project/concolic_on_RTL/RTL/core/clint/'
     file1 = 'clint.v'
 
-    # flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/case1/'
+
+    # flpath = 'D:/mylife_yanjiu/project/concolic_on_RTL/RTL/RS232-T400/'
+    # file1 = 'uart_top copy.v'
+
+    # flpath = 'D:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/'
     # file1 = 'case1 copy.v'
     # pre_code = code_preprocess(flpath,file1)        # 预处理verilog代码,输出list类型
     # cdfg_list, inout_port = main_process(pre_code)                          # 主体处理函数,输出list类型
 
-    # flpath = 'D:/mylife_yanjiu/project/concolic on RTL/RTL/case4/'
+    # flpath = 'D:/mylife_yanjiu/project/concolic_on_RTL/RTL/case4/'
     # file1 = 'case4.v'
     pre_code = code_preprocess(flpath,file1)        # 预处理verilog代码,输出list类型
     cdfg_list, inout_port = main_process(pre_code)                          # 主体处理函数,输出list类型
 
     print(cdfg_list)
+    return cdfg_list, inout_port
+
+
+def main():
+    # 加强版垃圾回收
+    for _ in range(3):
+        gc.collect()
+    monitor = MemoryMonitor()
+    monitor.start()
+    monitor.ready_event.wait()
+    start_time = time.time()
+
+    cdfg_list, inout_port = monitored_task()
+
+    monitor.stop()
+    # monitor.join()
+    end_time = time.time()
+    execution_time = end_time - start_time
+    gc.collect()
+    print("Execution time in seconds: ", execution_time)
+    print(f"峰值内存占用：{monitor.peak_memory:.2f} KB")
     return cdfg_list, inout_port
 
 if __name__ == '__main__':

@@ -1,0 +1,32 @@
+/* 
+ Copyright 2020 Blue Liang, liangkangnan@163.com
+ 
+ Licensed under the Apache License, Version 2.0 (the "License"); 
+ you may not use this file except in compliance with the License. 
+ You may obtain a copy of the License at 
+ 
+http: 
+ Unless required by applicable law or agreed to in writing, software 
+ distributed under the License is distributed on an "AS IS" BASIS, 
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and 
+ limitations under the License. 
+ */
+module csr_reg_1 (    input wire clk,    input wire rst,    input wire        we_i,    input wire [31:0] raddr_i,    input wire [31:0] waddr_i,    input wire [31:0] data_i,    input wire        clint_we_i,    input wire [31:0] clint_raddr_i,    input wire [31:0] clint_waddr_i,    input wire [31:0] clint_data_i,    output wire global_int_en_o,    output reg  [31:0] clint_data_o,    output wire [31:0] clint_csr_mtvec,    output wire [31:0] clint_csr_mepc,    output wire [31:0] clint_csr_mstatus,    output reg [31:0] data_o);
+ reg [63:0] cycle;
+ reg [31:0] mtvec;
+ reg [31:0] mcause;
+ reg [31:0] mepc;
+ reg [31:0] mie;
+ reg [31:0] mstatus;
+ reg [31:0] mscratch;
+ assign global_int_en_o = (mstatus[3] == 1'b1) ? 1'b1 : 1'b0;
+always @(*) begin   if (mstatus[3] == 1'b1) begin   $display("0,0,1");   end   else begin   $display("0,0,0");   end   end
+ assign clint_csr_mtvec = mtvec;
+ assign clint_csr_mepc = mepc;
+ assign clint_csr_mstatus = mstatus;
+always @(posedge clk) begin   if (rst == 1'b0) begin   cycle <= {32'h0, 32'h0};   $display("4,1,1");   end else begin   cycle <= cycle + 1'b1;   $display("4,1,0");   end   end
+always @(posedge clk) begin   if (rst == 1'b0) begin   mtvec <= 32'h0;   mcause <= 32'h0;   mepc <= 32'h0;   mie <= 32'h0;   mstatus <= 32'h0;   mscratch <= 32'h0;   $display("5,1,1");   end else begin   if (we_i == 1'b1) begin   case (waddr_i[11:0])   12'h305: begin   mtvec <= data_i;   $display("5,1,0,1,1");   end   12'h342: begin   mcause <= data_i;   $display("5,1,0,1,2");   end   12'h341: begin   mepc <= data_i;   $display("5,1,0,1,3");   end   12'h304: begin   mie <= data_i;   $display("5,1,0,1,4");   end   12'h300: begin   mstatus <= data_i;   $display("5,1,0,1,5");   end   12'h340: begin   mscratch <= data_i;   $display("5,1,0,1,6");   end   default: begin   $display("5,1,0,1,7");   end   endcase   end else if (clint_we_i == 1'b1) begin   case (clint_waddr_i[11:0])   12'h305: begin   mtvec <= clint_data_i;   $display("5,1,0,0,1,1");   end   12'h342: begin   mcause <= clint_data_i;   $display("5,1,0,0,1,2");   end   12'h341: begin   mepc <= clint_data_i;   $display("5,1,0,0,1,3");   end   12'h304: begin   mie <= clint_data_i;   $display("5,1,0,0,1,4");   end   12'h300: begin   mstatus <= clint_data_i;   $display("5,1,0,0,1,5");   end   12'h340: begin   mscratch <= clint_data_i;   $display("5,1,0,0,1,6");   end   default: begin   $display("5,1,0,0,1,7");   end   endcase   end   end   end
+always @(*) begin   if ((waddr_i[11:0] == raddr_i[11:0]) && (we_i == 1'b1)) begin   data_o = data_i;   $display("6,0,1");   end else begin   case (raddr_i[11:0])   12'hc00: begin   data_o = cycle[31:0];   $display("6,0,0,1");   end   12'hc80: begin   data_o = cycle[63:32];   $display("6,0,0,2");   end   12'h305: begin   data_o = mtvec;   $display("6,0,0,3");   end   12'h342: begin   data_o = mcause;   $display("6,0,0,4");   end   12'h341: begin   data_o = mepc;   $display("6,0,0,5");   end   12'h304: begin   data_o = mie;   $display("6,0,0,6");   end   12'h300: begin   data_o = mstatus;   $display("6,0,0,7");   end   12'h340: begin   data_o = mscratch;   $display("6,0,0,8");   end   default: begin   data_o = 32'h0;   $display("6,0,0,9");   end   endcase   end   end
+always @(*) begin   if ((clint_waddr_i[11:0] == clint_raddr_i[11:0]) && (clint_we_i == 1'b1)) begin   clint_data_o = clint_data_i;   $display("7,0,1");   end else begin   case (clint_raddr_i[11:0])   12'hc00: begin   clint_data_o = cycle[31:0];   $display("7,0,0,1");   end   12'hc80: begin   clint_data_o = cycle[63:32];   $display("7,0,0,2");   end   12'h305: begin   clint_data_o = mtvec;   $display("7,0,0,3");   end   12'h342: begin   clint_data_o = mcause;   $display("7,0,0,4");   end   12'h341: begin   clint_data_o = mepc;   $display("7,0,0,5");   end   12'h304: begin   clint_data_o = mie;   $display("7,0,0,6");   end   12'h300: begin   clint_data_o = mstatus;   $display("7,0,0,7");   end   12'h340: begin   clint_data_o = mscratch;   $display("7,0,0,8");   end   default: begin   clint_data_o = 32'h0;   $display("7,0,0,9");   end   endcase   end   end
+endmodule
