@@ -16,8 +16,10 @@ class MemoryMonitor(Thread):
         self.ready_event = Event()  # 新增准备就绪信号
 
     def _get_current_memory(self):
-        """获取当前进程内存使用量"""
-        return self.process.memory_info().rss / 1024  # 转换为MB
+        total = self.process.memory_info().rss
+        for child in self.process.children(recursive=True):  # 递归统计子进程
+            total += child.memory_info().rss
+        return total / 1024  # KB
 
     def run(self):
         """持续监控内存使用情况"""
@@ -41,7 +43,7 @@ def main_process():
         # "cd d:/mylife_yanjiu/project/concolic_on_RTL/RTL/core/clint/",  # 打开路径
         "iverilog -o wave clint.v clint_tb.v",  # 第一条命令
         "vvp -n wave lxt2"                         # 第二条命令（假设需仿真）
-        ,"gtkwave wave.vcd"                         # 第三条命令（假设需查看波形）
+        # ,"gtkwave wave.vcd"                         # 第三条命令（假设需查看波形）
     ]
 
     for cmd in commands:
