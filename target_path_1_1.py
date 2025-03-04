@@ -98,6 +98,10 @@ def inout_extract(dict_block, reset_name):                  # 提取条件与操
     return dict_block
 
 def path_generate(dict_CDFG_inout, target_node_list, reset_name):
+    # 全局变量
+    global num_all
+    global num_apt
+    global num_start
     target_path_C = []
     target_path_D = []
     target_path_all = []
@@ -300,27 +304,6 @@ def search_p(dict_CDFG_inout, path_l, reset_name):
         num_start -= 1
     return 0
 
-def period_unify(path_list, now_node):    # 路径时序约束统一化
-    # 添加初始优先级参数
-    global num_start
-    up_node = []
-    flag_error = 0
-    for i in range(len(path_list)):
-        if path_list[i][0] == now_node:
-            path_list[i].append(num_start)
-            up_node.append(path_list[i][1])
-            flag_error += 1
-        else:
-            continue
-    if flag_error == 0:
-        return 0
-
-    for i in range(len(path_list)):
-            if path_list[i][0] == up_node:
-                pass
-    pass
-    num_start += 1
-    return 0
 
 def CDFG_inout_generate(list_CDFG, reset_name):
     # 节点信息补充，输入输出信号提取
@@ -403,7 +386,7 @@ def main():
         for j in range(len(path_list)):
             if path_list[j][2] == '1':                 # 定位控制流末端
                 if path_list[j][1] not in node_selected:
-                    target_node_list.append([path_list[j][1],path_list[j][4]])  # [上级节点，距离]
+                    target_node_list.append([path_list[j][1],path_list[j][4]+1])  # [上级节点，距离]
                     node_selected.append(path_list[j][1])
         pass
     pass

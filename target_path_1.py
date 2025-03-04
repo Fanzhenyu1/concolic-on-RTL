@@ -507,7 +507,7 @@ if __name__ == '__main__':
     flag = 0  # 用于控制路径搜索的回溯
 
     target_node = '3,1,0,1,0,0,1'
-    num_start = 1  # 起始优先级
+    num_start = 0  # 起始优先级
     # 输入reset信号名
     # reset_name = input('请输入reset信号名：')
     reset_name = 'rst'
