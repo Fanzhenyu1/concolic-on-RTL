@@ -338,8 +338,41 @@ def CDFG_inout_generate(list_CDFG, reset_name):
     # print(list_inout)                             # 输出模块所有输入输出信号列表
     return dict_CDFG_inout
 
-def main():
+def main_1(target_node_list, dict_CDFG_inout):
 
+    # 全局变量
+    global num_all
+    global num_apt
+    global num_start
+    global path_list
+    global constraint_stack
+    global flag
+    global reset_name
+
+    for i in range(len(target_node_list)):
+        num_start = target_node_list[i][1]
+        constraint_stack = []
+        flag = 0
+
+        path_in_block = dict_CDFG_inout[target_node]['block_path']
+        print(f"目标节点块内路径：{path_in_block}")
+        target_path_C,target_path_D = path_generate(dict_CDFG_inout, [target_node_list[i][0]], reset_name)         # 带递归
+        print("目标节点控制依赖：",target_path_C)
+        print("目标节点数据依赖：",target_path_D)
+        pass
+        target_path = target_path_C + target_path_D
+        # print("所有路径：",target_path)
+
+        # 路径搜索
+        path_search(dict_CDFG_inout, target_path, reset_name)
+
+        # 输出路径搜索结果
+        print(f"路径约减结果：{num_apt}/{num_all}")
+        print(f"路径搜索结果：{path_list}")
+
+    return path_list
+
+def main():
     # 全局变量
     global num_all
     global num_apt
@@ -347,7 +380,7 @@ def main():
     global constraint_stack
     global flag
     global reset_name
-
+    global node_selected
     # 加强版垃圾回收
     for _ in range(3):
         gc.collect()
@@ -359,27 +392,21 @@ def main():
 
     # 输入输出信号提取
     dict_CDFG_inout = CDFG_inout_generate(list_CDFG, reset_name)
-
-    # 路径生成
-    # target_node = input('请输入目标节点：')        # 输入选择目标节点
-
-    path_in_block = dict_CDFG_inout[target_node]['block_path']
-    print(f"目标节点块内路径：{path_in_block}")
+    # 目标节点入栈
     target_node_list = []
-    target_node_list.append(target_node)             # 定义目标节点堆栈，第一个目标节点入栈
-    target_path_C,target_path_D = path_generate(dict_CDFG_inout, target_node_list, reset_name)         # 带递归
-    print("目标节点控制依赖：",target_path_C)
-    print("目标节点数据依赖：",target_path_D)
+    target_node_list.append([target_node, num_start])             # 定义目标节点堆栈，第一个目标节点入栈
+    node_selected.append(target_node)
+    for i in range(4):
+        path_list = main_1(target_node_list, dict_CDFG_inout)
+        print(f"第{i+1}次搜索结果：{path_list}")
+        target_node_list = []
+        for j in range(len(path_list)):
+            if path_list[j][2] == '1':                 # 定位控制流末端
+                if path_list[j][1] not in node_selected:
+                    target_node_list.append([path_list[j][1],path_list[j][4]])  # [上级节点，距离]
+                    node_selected.append(path_list[j][1])
+        pass
     pass
-    target_path = target_path_C + target_path_D
-    # print("所有路径：",target_path)
-
-    # 路径搜索
-    path_search(dict_CDFG_inout, target_path, reset_name)
-
-    # 输出路径搜索结果
-    print(f"路径约减结果：{num_apt}/{num_all}")
-    print(f"路径搜索结果：{path_list}")
 
     monitor.stop()
     # monitor.join()
@@ -388,7 +415,8 @@ def main():
     gc.collect()
     print("Execution time in seconds: ", execution_time)
     print(f"峰值内存占用：{monitor.peak_memory:.2f} KB")
-    return dict_CDFG_inout,path_in_block,target_path_C,target_path_D
+    return path_list
+    
 
 list_CDFG = [{'0,0,1': {'condition': "(int_state != 4'b0001) | (csr_state != 5'b00001)", 'action': "hold_flag_o = 1'b1;", 'block_path': ['0,0', '0,0,1']}, '0,0,0': {'condition': "!((int_state != 4'b0001) | (csr_state != 5'b00001))", 'action': "hold_flag_o = 1'b0;", 'block_path': ['0,0', '0,0,0']}}, {'1,0': {'condition': '', 'action': '', 'block_path': ['1,0']}, '1,0,1': {'condition': "(rst == 1'b0)", 'action': "int_state = 4'b0001;", 'block_path': ['1,0', '1,0,1']}, '1,0,0': {'condition': "!(rst == 1'b0)", 'action': '', 'block_path': ['1,0', '1,0,0']}, '1,0,0,1': {'condition': "(inst_i == 32'h73 || inst_i == 32'h00100073)", 'action': '', 'block_path': ['1,0', '1,0,0', '1,0,0,1']}, '1,0,0,1,1': {'condition': "(div_started_i == 1'b0)", 'action': "int_state = 4'b0010;", 'block_path': ['1,0', '1,0,0', '1,0,0,1', '1,0,0,1,1']}, '1,0,0,1,0': {'condition': "!(div_started_i == 1'b0)", 'action': "int_state = 4'b0001;", 'block_path': ['1,0', '1,0,0', '1,0,0,1', '1,0,0,1,0']}, '1,0,0,0': {'condition': "!(inst_i == 32'h73 || inst_i == 32'h00100073)", 'action': '', 'block_path': ['1,0', '1,0,0', '1,0,0,0']}, '1,0,0,0,1': {'condition': "(int_flag_i != 8'h0 && global_int_en_i == 1'b1)", 'action': "int_state = 4'b0100;", 'block_path': ['1,0', '1,0,0', '1,0,0,0', '1,0,0,0,1']}, '1,0,0,0,0': {'condition': "!(int_flag_i != 8'h0 && global_int_en_i == 1'b1)", 'action': '', 'block_path': ['1,0', '1,0,0', '1,0,0,0', '1,0,0,0,0']}, '1,0,0,0,0,1': {'condition': "(inst_i == 32'h30200073)", 'action': "int_state = 4'b1000;", 'block_path': ['1,0', '1,0,0', '1,0,0,0', '1,0,0,0,0', '1,0,0,0,0,1']}, '1,0,0,0,0,0': {'condition': "!(inst_i == 32'h30200073)", 'action': "int_state = 4'b0001;", 'block_path': ['1,0', '1,0,0', '1,0,0,0', '1,0,0,0,0', '1,0,0,0,0,0']}}, {'2,1': {'condition': '', 'action': '', 'block_path': ['2,1']}, '2,1,1': {'condition': "(rst == 1'b0)", 'action': "cause <= 32'h0;", 'block_path': ['2,1', '2,1,1']}, '2,1,0': {'condition': "!(rst == 1'b0)", 'action': "if(csr_state == 5'b00001 && int_state == 4'b0010)cause <= 32'd10;", 'block_path': ['2,1', '2,1,0']}, '2,1,0,1': {'condition': "(inst_i) == 32'h73", 'action': "cause <= 32'd11;", 'block_path': ['2,1', '2,1,0', '2,1,0,1']}, '2,1,0,2': {'condition': "(inst_i) == 32'h00100073", 'action': "cause <= 32'd3;", 'block_path': ['2,1', '2,1,0', '2,1,0,2']}, '2,1,0,3': {'condition': 'default', 'action': '', 'block_path': ['2,1', '2,1,0', '2,1,0,3']}, '2,0': {'condition': '!', 'action': '', 'block_path': ['2,0']}, '2,0,1': {'condition': "(int_state == 4'b0100)", 'action': "cause <= 32'h80000004;", 'block_path': ['2,0', '2,0,1']}}, {'3,1': {'condition': '', 'action': '', 'block_path': ['3,1']}, '3,1,1': {'condition': "(rst == 1'b0)", 'action': "csr_state <= 5'b00001;inst_addr <= 32'h0;", 'block_path': ['3,1', '3,1,1']}, '3,1,0': {'condition': "!(rst == 1'b0)", 'action': '', 'block_path': ['3,1', '3,1,0']}, '3,1,0,1': {'condition': "(csr_state) == 5'b00001", 'action': '', 'block_path': ['3,1', '3,1,0', '3,1,0,1']}, '3,1,0,1,1': {'condition': "(int_state == 4'b0010)", 'action': "csr_state <= 5'b00100;", 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,1']}, '3,1,0,1,1,1': {'condition': "(jump_flag_i == 1'b1)", 'action': "inst_addr <= jump_addr_i - 4'h4;", 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,1', '3,1,0,1,1,1']}, '3,1,0,1,1,0': {'condition': "!(jump_flag_i == 1'b1)", 'action': 'inst_addr <= inst_addr_i;', 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,1', '3,1,0,1,1,0']}, '3,1,0,1,0': {'condition': "!(int_state == 4'b0010)", 'action': '', 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0']}, '3,1,0,1,0,1': {'condition': "(int_state == 4'b0100)", 'action': "csr_state <= 5'b00100;", 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0', '3,1,0,1,0,1']}, '3,1,0,1,0,1,1': {'condition': "(jump_flag_i == 1'b1)", 'action': 'inst_addr <= jump_addr_i;', 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0', '3,1,0,1,0,1', '3,1,0,1,0,1,1']}, '3,1,0,1,0,1,0': {'condition': "!(jump_flag_i == 1'b1)", 'action': '', 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0', '3,1,0,1,0,1', '3,1,0,1,0,1,0']}, '3,1,0,1,0,1,0,1': {'condition': "(div_started_i == 1'b1)", 'action': "inst_addr <= inst_addr_i - 4'h4;", 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0', '3,1,0,1,0,1', '3,1,0,1,0,1,0', '3,1,0,1,0,1,0,1']}, '3,1,0,1,0,1,0,0': {'condition': "!(div_started_i == 1'b1)", 'action': 'inst_addr <= inst_addr_i;', 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0', '3,1,0,1,0,1', '3,1,0,1,0,1,0', '3,1,0,1,0,1,0,0']}, '3,1,0,1,0,0': {'condition': "!(int_state == 4'b0100)", 'action': '', 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0', '3,1,0,1,0,0']}, '3,1,0,1,0,0,1': {'condition': "(int_state == 4'b1000)", 'action': "csr_state <= 5'b01000;", 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0', '3,1,0,1,0,0', '3,1,0,1,0,0,1']}, '3,1,0,2': {'condition': "(csr_state) == 5'b00100", 'action': "csr_state <= 5'b00010;", 'block_path': ['3,1', '3,1,0', '3,1,0,2']}, '3,1,0,3': {'condition': "(csr_state) == 5'b00010", 'action': "csr_state <= 5'b10000;", 'block_path': ['3,1', '3,1,0', '3,1,0,3']}, '3,1,0,4': {'condition': "(csr_state) == 5'b10000", 'action': "csr_state <= 5'b00001;", 'block_path': ['3,1', '3,1,0', '3,1,0,4']}, '3,1,0,5': {'condition': "(csr_state) == 5'b01000", 'action': "csr_state <= 5'b00001;", 'block_path': ['3,1', '3,1,0', '3,1,0,5']}, '3,1,0,6': {'condition': 'default', 'action': "csr_state <= 5'b00001;", 'block_path': ['3,1', '3,1,0', '3,1,0,6']}}, {'4,1': {'condition': '', 'action': '', 'block_path': ['4,1']}, '4,1,1': {'condition': "(rst == 1'b0)", 'action': "we_o <= 1'b0;waddr_o <= 32'h0;data_o <= 32'h0;", 'block_path': ['4,1', '4,1,1']}, '4,1,0': {'condition': "!(rst == 1'b0)", 'action': "we_o <= 1'b0;waddr_o <= 32'h0;data_o <= 32'h0;", 'block_path': ['4,1', '4,1,0']}, '4,1,0,1': {'condition': "(csr_state) == 5'b00100", 'action': "we_o <= 1'b1;waddr_o <= {20'h0, 12'h341};data_o <= inst_addr;", 'block_path': ['4,1', '4,1,0', '4,1,0,1']}, '4,1,0,2': {'condition': "(csr_state) == 5'b10000", 'action': "we_o <= 1'b1;waddr_o <= {20'h0, 12'h342};data_o <= cause;", 'block_path': ['4,1', '4,1,0', '4,1,0,2']}, '4,1,0,3': {'condition': "(csr_state) == 5'b00010", 'action': "we_o <= 1'b1;waddr_o <= {20'h0, 12'h300};data_o <= {csr_mstatus[31:4], 1'b0, csr_mstatus[2:0]};", 'block_path': ['4,1', '4,1,0', '4,1,0,3']}, '4,1,0,4': {'condition': "(csr_state) == 5'b01000", 'action': "we_o <= 1'b1;waddr_o <= {20'h0, 12'h300};data_o <= {csr_mstatus[31:4], csr_mstatus[7], csr_mstatus[2:0]};", 'block_path': ['4,1', '4,1,0', '4,1,0,4']}, '4,1,0,5': {'condition': 'default', 'action': '', 'block_path': ['4,1', '4,1,0', '4,1,0,5']}}, {'5,1': {'condition': '', 'action': '', 'block_path': ['5,1']}, '5,1,1': {'condition': "(rst == 1'b0)", 'action': "int_assert_o <= 1'b0;int_addr_o <= 32'h0;", 'block_path': ['5,1', '5,1,1']}, '5,1,0': {'condition': "!(rst == 1'b0)", 'action': "int_assert_o <= 1'b0;int_addr_o <= 32'h0;", 'block_path': ['5,1', '5,1,0']}, '5,1,0,1': {'condition': "(csr_state) == 5'b10000", 'action': "int_assert_o <= 1'b1;int_addr_o <= csr_mtvec;", 'block_path': ['5,1', '5,1,0', '5,1,0,1']}, '5,1,0,2': {'condition': "(csr_state) == 5'b01000", 'action': "int_assert_o <= 1'b1;int_addr_o <= csr_mepc;", 'block_path': ['5,1', '5,1,0', '5,1,0,2']}, '5,1,0,3': {'condition': 'default', 'action': '', 'block_path': ['5,1', '5,1,0', '5,1,0,3']}}]
 
@@ -504,10 +532,11 @@ if __name__ == '__main__':
     constraint_stack = []
     flag = 0  # 用于控制路径搜索的回溯
 
-    target_node = '3,1,0,1,0,0,1'
+    target_node = '5,1,0,2'
     num_start = 0  # 起始优先级
     # 输入reset信号名
     # reset_name = input('请输入reset信号名：')
     reset_name = 'rst'
+    node_selected = []  # 用于记录以选择过的目标节点
     main()
     pass
