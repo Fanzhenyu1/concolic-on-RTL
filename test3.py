@@ -275,21 +275,23 @@ def main():
     if automator.solver.check() == sat:
         model = automator.solver.model()
         
-        # 解析并打印结果
-        print("验证成功！测试序列：")
-        for cycle in range(5):
+        # 获取输入信号列表
+        input_signals = unroller.get_signal_category('inputs')
+        
+        # 解析并打印输入激励
+        print("生成的输入激励序列：")
+        for cycle in range(unroller.num_cycles):
             syms = unroller.get_cycle_symbols(cycle)
             print(f"\nCycle {cycle}:")
-            print(f"  rst    = {model.evaluate(syms['rst'])}")
-            print(f"  enable = {model.evaluate(syms['enable'])}")
-            # print(f"  count  = {model.evaluate(syms['count'])} (0x{model.evaluate(syms['count']).as_long():X})")
-            count_val = model.evaluate(syms['count'])
-            if isinstance(count_val, BitVecNumRef):
-                hex_value = f"0x{count_val.as_long():X}"
-            else:
-                hex_value = "[未完全约束]"
-            print(f"  count  = {count_val} ({hex_value})")
-            print(f"  trigger= {model.evaluate(syms['trigger'])}")
+            
+            # 仅输出输入信号
+            for sig in input_signals:
+                val = model.evaluate(syms[sig])
+                if isinstance(val, BitVecNumRef):
+                    hex_value = f"0x{val.as_long():X}"
+                else:
+                    hex_value = "[未完全约束]"
+                print(f"  {sig.ljust(6)} = {val} ({hex_value})")
     else:
         print("无解！约束存在冲突")
 
@@ -300,7 +302,6 @@ def main():
 # ---------------------------
 if __name__ == "__main__":
     signal_def = {
-        'clk': (1, 1),       # 输入，1-bit
         'rst': (1, 1),       # 输入，1-bit
         'enable': (1, 1),    # 输入，1-bit
         'count': (2, 2),     # 状态寄存器，4-bit
