@@ -7,7 +7,7 @@ import target_path_1_1
 
 list_CDFG, list_inout = CDFG_1_1.main()
 
-select_node = ['3,1,0,1,0,0,1']
+select_node = ['3,1,0,1,0,0,1','1,0,0,0,0,1']
 execute_node = ['1,0,0,0,0,0',
 '2,1,0,0,1',
 '5,1,0,1',

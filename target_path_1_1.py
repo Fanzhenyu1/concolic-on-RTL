@@ -69,6 +69,7 @@ def inout_extract(dict_block, reset_name):                  # 提取条件与操
         action_out = []
         if str_action != '':
             for action_one in action_list:
+                pass
                 action_out.append(action_one.strip().split(' ')[0])
                 action_instr = action_one.split('=')[1]
                 # action_inlist = re.split(r"[!&()*+| \-]+", action_instr)
@@ -114,9 +115,11 @@ def path_generate(dict_CDFG_inout, target_node_list, reset_name):
         path_in_block = dict_CDFG_inout[target_node]['block_path']
     path_list_C = []
     path_list_D = []
-
+    pattern_1 = r'^(\d+\'[bdhBHD][0-9a-fA-F_]+|\d+)$'    # 匹配数字常量项
     dict_target_node = dict_CDFG_inout[target_node]      # 目标节点信息
     node_action_in = dict_target_node['action_in']
+    node_action_in = list(set(node_action_in))
+    node_action_in = list(filter(lambda x: not re.match(pattern_1, x), node_action_in))  # 排除数字常量项
     # node_action_out = dict_target_node['action_out']
     # node_condition_in = dict_target_node['condition_in']
 
@@ -126,6 +129,8 @@ def path_generate(dict_CDFG_inout, target_node_list, reset_name):
         if reset_name not in dict_CDFG_inout[node]['condition']:  # 排除reset信号
             ctr_dep_list.extend(dict_CDFG_inout[node]['condition_in'])
     ctr_dep_list = list(set(ctr_dep_list))
+    
+    ctr_dep_list = list(filter(lambda x: not re.match(pattern_1, x), ctr_dep_list))  # 排除数字常量项
     pass
     print(f"目标节点'{target_node}'控制依赖信号列表：{ctr_dep_list}")
     print(f"目标节点'{target_node}'数据依赖信号列表：{node_action_in}")
@@ -136,7 +141,9 @@ def path_generate(dict_CDFG_inout, target_node_list, reset_name):
         sub_node_true = 0
         for i in ctr_dep_list:
             if i.split('[')[0] in sub_node_action_out:      #@1111
-                if reset_name not in dict_CDFG_inout[key]['condition']:
+                if reset_name in dict_CDFG_inout[key]['condition'] and key[-1] == '1':
+                    sub_node_true = 0
+                else:
                     sub_node_true = 1
         if sub_node_true == 1:
             target_node_list.append(key)          # 寻找上一级节点并将目标节点入栈
@@ -153,25 +160,31 @@ def path_generate(dict_CDFG_inout, target_node_list, reset_name):
             target_path_C.append(path_list_C)
         pass
         path_list_C = []
-
+    flag_in = 0
     ############## 数据依赖路径搭建#############
     for key, value in dict_CDFG_inout.items():           # 遍历所有节点
         sub_node_action_out = dict_CDFG_inout[key]['action_out']    # 提取可能上一级节点的输出信号
         path_list_D.append(target_node)                    # 开始构建目标路径
         for i in node_action_in:
+            flag_in = 0
             if i.split('[')[0] in sub_node_action_out:
-                target_node_list.append(key)          # 寻找上一级节点并将目标节点入栈
-                path_list_D.append(key)                 # 构建目标路径上级节点
-                path_list_D.append('0')                 # 构建目标路径数据流路径信息
-                if target_node.split(",")[1] == '1' and key.split(",")[1] == '1':
-                    path_list_D.append('1')
-                elif target_node.split(",")[1] == '0' and key.split(",")[1] == '0':
-                    path_list_D.append('0')
-                elif target_node.split(",")[1] == '0' and key.split(",")[1] == '1':
-                    path_list_D.append('0')
-                else:
-                    path_list_D.append('1')             # 构建目标路径时序参数
-                target_path_D.append(path_list_D)
+                if target_node != key:             # 排除自身节点,有利有弊,排除循环依赖
+                    if reset_name not in dict_CDFG_inout[key]['condition']:
+                        target_node_list.append(key)          # 寻找上一级节点并将目标节点入栈
+                        path_list_D.append(key)                 # 构建目标路径上级节点
+                        path_list_D.append('0')                 # 构建目标路径数据流路径信息
+                        if target_node.split(",")[1] == '1' and key.split(",")[1] == '1':
+                            path_list_D.append('1')
+                        elif target_node.split(",")[1] == '0' and key.split(",")[1] == '0':
+                            path_list_D.append('0')
+                        elif target_node.split(",")[1] == '0' and key.split(",")[1] == '1':
+                            path_list_D.append('0')
+                        else:
+                            path_list_D.append('1')             # 构建目标路径时序参数
+                        target_path_D.append(path_list_D)
+                        flag_in = 1
+            if flag_in == 1:
+                break
         path_list_D = []
     target_path_all = target_path_C + target_path_D
     print("所有路径：",target_path_all)
@@ -220,25 +233,29 @@ def path_search(dict_CDFG_inout, target_path_l, reset_name):
         solver = Solver()
         signal_list, constraints = verilog2z3.verilog_to_z3(constraint_stack_1,[],[])
         pass
-        for constraint in constraints:
-            solver.add(eval(constraint))    
-        if solver.check() == sat:
-            print(f"当前路径约束下有解")
-            num_apt += 1
-            num_all += 1
-            target_path.append(num_start)
-            num_start += 1            
-            path_list.append(target_path)
-            # 进行依赖搜寻,获取上级路径列表
-            pc,pd = path_generate(dict_CDFG_inout, [target_node_up], reset_name)
-            target_path_up = pc + pd
-            if target_path_up == []:
-                num_start -= 1
-            pass
-            search_p(dict_CDFG_inout, target_path_up, reset_name)
+        # print(constraints)
+        if constraints == []:
+            print(f"存在循环依赖，路径{target_path}跳过")
         else:
-            print(f"当前路径约束下无解,该路径跳过")
-            num_all += 1
+            for constraint in constraints:
+                solver.add(eval(constraint))    
+            if solver.check() == sat:
+                print(f"当前路径约束下有解")
+                num_apt += 1
+                num_all += 1
+                target_path.append(num_start)
+                num_start += 1            
+                path_list.append(target_path)
+                # 进行依赖搜寻,获取上级路径列表
+                pc,pd = path_generate(dict_CDFG_inout, [target_node_up], reset_name)
+                target_path_up = pc + pd
+                if target_path_up == []:
+                    num_start -= 1
+                pass
+                search_p(dict_CDFG_inout, target_path_up, reset_name)
+            else:
+                print(f"当前路径约束下无解,该路径跳过")
+                num_all += 1
     pass
     return 0
 
@@ -268,6 +285,9 @@ def search_p(dict_CDFG_inout, path_l, reset_name):
             solver = Solver()
             signal_list, constraints = verilog2z3.verilog_to_z3(constraint_stack_1,[],[])
             pass
+            if constraints == []:
+                print(f"存在循环依赖，路径{target_path}跳过")
+                continue
             for constraint in constraints:
                 solver.add(eval(constraint))    
             if solver.check() == sat:
@@ -284,6 +304,7 @@ def search_p(dict_CDFG_inout, path_l, reset_name):
                 pass
                 if path_2 == []:
                     num_start -= 1
+                    constraint_stack = constraint_stack[:-1]  # 回溯
                 pass
                 search_p(dict_CDFG_inout, path_2, reset_name)
             else:
@@ -300,8 +321,9 @@ def search_p(dict_CDFG_inout, path_l, reset_name):
                 flag = 0
             pass
             continue
-    if flag_1 == len(path_l) and flag_1 != 0:
-        num_start -= 1
+    # if flag_1 == len(path_l) and flag_1 != 0:
+    #     num_start -= 1
+    #     pass
     return 0
 
 
@@ -379,15 +401,27 @@ def main():
     target_node_list = []
     target_node_list.append([target_node, num_start])             # 定义目标节点堆栈，第一个目标节点入栈
     node_selected.append(target_node)
-    for i in range(4):
+
+    for i in range(4):          # 手动定义路径搜寻深度
+        print(f"已选择目标节点:{node_selected}")
         path_list = main_1(target_node_list, dict_CDFG_inout)
         print(f"第{i+1}次搜索结果：{path_list}")
         target_node_list = []
         for j in range(len(path_list)):
-            if path_list[j][2] == '1':                 # 定位控制流末端
-                if path_list[j][1] not in node_selected:
-                    target_node_list.append([path_list[j][1],path_list[j][4]+1])  # [上级节点，距离]
-                    node_selected.append(path_list[j][1])
+            for k in range(len(path_list)):
+                if path_list[j][0] == path_list[k][1]:
+                    node_selected.append(path_list[j][0])
+        for j in range(len(path_list)):
+            if path_list[j][1] not in node_selected:
+                target_node_list.append([path_list[j][1], path_list[j][4]+1])
+            # if path_list[j][2] == '1':                 # 定位控制流末端
+                # if path_list[j][1] not in node_selected:
+                #     target_node_list.append([path_list[j][1],path_list[j][4]+1])  # [上级节点，距离]
+                #     node_selected.append(path_list[j][1])
+                # pass
+        node_selected = list(set(node_selected))
+        print(f"已选择目标节点:{node_selected}")
+        print(f"目标节点列表：{target_node_list}")
         pass
     pass
 
@@ -400,114 +434,141 @@ def main():
     print(f"峰值内存占用：{monitor.peak_memory:.2f} KB")
     return path_list
     
+# list_CDFG = [{'0,1': {'condition': '', 'action': '', 'block_path': ['0,1']}, '0,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "rst_cnt <= 5'h0;", 'block_path': ['0,1', '0,1,1']}, '0,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['0,1', '0,1,0']}, '0,1,0,1': {'condition': "(LineState_o != 2'h0)", 'action': "rst_cnt <= 5'h0;", 'block_path': ['0,1', '0,1,0', '0,1,0,1']}, '0,1,0,0': {'condition': "!(LineState_o != 2'h0)", 'action': '', 'block_path': ['0,1', '0,1,0', '0,1,0,0']}, '0,1,0,0,1': {'condition': '(!(usb_rst) && i_rx_phy_fs_ce)', 'action': "rst_cnt <= (rst_cnt + 5'h1);", 'block_path': ['0,1', '0,1,0', '0,1,0,0', '0,1,0,0,1']}}, {'1,1': {'condition': '', 'action': '', 'block_path': ['1,1']}, '1,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "usb_rst <= 1'b0;", 'block_path': ['1,1', '1,1,1']}, '1,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': "usb_rst <= (rst_cnt == 5'h1f);", 'block_path': ['1,1', '1,1,0']}}, {'2,0': {'condition': '', 'action': 'txdp = i_tx_phy_txdp;', 'block_path': ['2,0']}}, {'3,0': {'condition': '', 'action': 'txdn = i_tx_phy_txdn;', 'block_path': ['3,0']}}, {'4,0': {'condition': '', 'action': 'txoe = i_tx_phy_txoe;', 'block_path': ['4,0']}}, {'5,0': {'condition': '', 'action': 'TxReady_o = i_tx_phy_TxReady_o;', 'block_path': ['5,0']}}, {'6,1': {'condition': '', 'action': '', 'block_path': ['6,1']}, '6,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_TxReady_o <= 1'b0;", 'block_path': ['6,1', '6,1,1']}, '6,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': 'i_tx_phy_TxReady_o <= (i_tx_phy_tx_ready_d & TxValid_i);', 'block_path': ['6,1', '6,1,0']}}, {'7,1': {'condition': '', 'action': 'i_tx_phy_ld_data <= i_tx_phy_ld_data_d;', 'block_path': ['7,1']}}, {'8,1': {'condition': '', 'action': '', 'block_path': ['8,1']}, '8,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_tx_ip <= 1'b0;", 'block_path': ['8,1', '8,1,1']}, '8,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['8,1', '8,1,0']}, '8,1,0,1': {'condition': "(i_tx_phy_ld_sop_d) == 1'b1", 'action': "i_tx_phy_tx_ip <= 1'b1;", 'block_path': ['8,1', '8,1,0', '8,1,0,1']}, '8,1,0,0': {'condition': "!(i_tx_phy_ld_sop_d) == 1'b1", 'action': '', 'block_path': ['8,1', '8,1,0', '8,1,0,0']}, '8,1,0,0,1': {'condition': "(i_tx_phy_app_eop_sync3) == 1'b1", 'action': "i_tx_phy_tx_ip <= 1'b0;", 'block_path': ['8,1', '8,1,0', '8,1,0,0', '8,1,0,0,1']}}, {'9,1': {'condition': '', 'action': '', 'block_path': ['9,1']}, '9,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_tx_ip_sync <= 1'b0;", 'block_path': ['9,1', '9,1,1']}, '9,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['9,1', '9,1,0']}, '9,1,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': 'i_tx_phy_tx_ip_sync <= i_tx_phy_tx_ip;', 'block_path': ['9,1', '9,1,0', '9,1,0,1']}}, {'10,1': {'condition': '', 'action': '', 'block_path': ['10,1']}, '10,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_data_done <= 1'b0;", 'block_path': ['10,1', '10,1,1']}, '10,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['10,1', '10,1,0']}, '10,1,0,1': {'condition': '(TxValid_i && !(i_tx_phy_tx_ip))', 'action': "i_tx_phy_data_done <= 1'b1;", 'block_path': ['10,1', '10,1,0', '10,1,0,1']}, '10,1,0,0': {'condition': '!(TxValid_i && !(i_tx_phy_tx_ip))', 'action': '', 'block_path': ['10,1', '10,1,0', '10,1,0,0']}, '10,1,0,0,1': {'condition': "(!(TxValid_i)) == 1'b1", 'action': "i_tx_phy_data_done <= 1'b0;", 'block_path': ['10,1', '10,1,0', '10,1,0,0', '10,1,0,0,1']}}, {'11,1': {'condition': '', 'action': '', 'block_path': ['11,1']}, '11,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_bit_cnt <= 3'h0;", 'block_path': ['11,1', '11,1,1']}, '11,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['11,1', '11,1,0']}, '11,1,0,1': {'condition': "(!(i_tx_phy_tx_ip_sync)) == 1'b1", 'action': "i_tx_phy_bit_cnt <= 3'h0;", 'block_path': ['11,1', '11,1,0', '11,1,0,1']}, '11,1,0,0': {'condition': "!(!(i_tx_phy_tx_ip_sync)) == 1'b1", 'action': '', 'block_path': ['11,1', '11,1,0', '11,1,0,0']}, '11,1,0,0,1': {'condition': '(i_rx_phy_fs_ce && !(i_tx_phy_stuff))', 'action': "i_tx_phy_bit_cnt <= (i_tx_phy_bit_cnt + 3'h1);", 'block_path': ['11,1', '11,1,0', '11,1,0,0', '11,1,0,0,1']}}, {'12,1': {'condition': '', 'action': '', 'block_path': ['12,1']}, '12,1,1': {'condition': "(!(i_tx_phy_tx_ip_sync)) == 1'b1", 'action': "i_tx_phy_sd_raw_o <= 1'b0;", 'block_path': ['12,1', '12,1,1']}, '12,1,0': {'condition': "!(!(i_tx_phy_tx_ip_sync)) == 1'b1", 'action': '', 'block_path': ['12,1', '12,1,0']}, '12,1,0,1': {'condition': "(i_tx_phy_bit_cnt) == 3'h0", 'action': 'i_tx_phy_sd_raw_o <= i_tx_phy_hold_reg_d[0];', 'block_path': ['12,1', '12,1,0', '12,1,0,1']}, '12,1,0,2': {'condition': "(i_tx_phy_bit_cnt) == 3'h1", 'action': 'i_tx_phy_sd_raw_o <= i_tx_phy_hold_reg_d[1];', 'block_path': ['12,1', '12,1,0', '12,1,0,2']}, '12,1,0,3': {'condition': "(i_tx_phy_bit_cnt) == 3'h2", 'action': 'i_tx_phy_sd_raw_o <= i_tx_phy_hold_reg_d[2];', 'block_path': ['12,1', '12,1,0', '12,1,0,3']}, '12,1,0,4': {'condition': "(i_tx_phy_bit_cnt) == 3'h3", 'action': 'i_tx_phy_sd_raw_o <= i_tx_phy_hold_reg_d[3];', 'block_path': ['12,1', '12,1,0', '12,1,0,4']}, '12,1,0,5': {'condition': "(i_tx_phy_bit_cnt) == 3'h4", 'action': 'i_tx_phy_sd_raw_o <= i_tx_phy_hold_reg_d[4];', 'block_path': ['12,1', '12,1,0', '12,1,0,5']}, '12,1,0,6': {'condition': "(i_tx_phy_bit_cnt) == 3'h5", 'action': 'i_tx_phy_sd_raw_o <= i_tx_phy_hold_reg_d[5];', 'block_path': ['12,1', '12,1,0', '12,1,0,6']}, '12,1,0,7': {'condition': "(i_tx_phy_bit_cnt) == 3'h6", 'action': 'i_tx_phy_sd_raw_o <= i_tx_phy_hold_reg_d[6];', 'block_path': ['12,1', '12,1,0', '12,1,0,7']}, '12,1,0,8': {'condition': "(i_tx_phy_bit_cnt) == 3'h7", 'action': 'i_tx_phy_sd_raw_o <= i_tx_phy_hold_reg_d[7];', 'block_path': ['12,1', '12,1,0', '12,1,0,8']}}, {'13,1': {'condition': '', 'action': "i_tx_phy_sft_done <= (!((i_tx_phy_one_cnt == 3'h6)) & (i_tx_phy_bit_cnt == 3'h7));", 'block_path': ['13,1']}}, {'14,1': {'condition': '', 'action': 'i_tx_phy_sft_done_r <= i_tx_phy_sft_done;', 'block_path': ['14,1']}}, {'15,1': {'condition': '', 'action': '', 'block_path': ['15,1']}, '15,1,1': {'condition': "(i_tx_phy_ld_sop_d) == 1'b1", 'action': "i_tx_phy_hold_reg <= 8'h80;", 'block_path': ['15,1', '15,1,1']}, '15,1,0': {'condition': "!(i_tx_phy_ld_sop_d) == 1'b1", 'action': '', 'block_path': ['15,1', '15,1,0']}, '15,1,0,1': {'condition': "(i_tx_phy_ld_data) == 1'b1", 'action': 'i_tx_phy_hold_reg <= DataOut_i;', 'block_path': ['15,1', '15,1,0', '15,1,0,1']}}, {'16,1': {'condition': '', 'action': 'i_tx_phy_hold_reg_d <= i_tx_phy_hold_reg;', 'block_path': ['16,1']}}, {'17,1': {'condition': '', 'action': '', 'block_path': ['17,1']}, '17,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_one_cnt <= 3'h0;", 'block_path': ['17,1', '17,1,1']}, '17,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['17,1', '17,1,0']}, '17,1,0,1': {'condition': "(!(i_tx_phy_tx_ip_sync)) == 1'b1", 'action': "i_tx_phy_one_cnt <= 3'h0;", 'block_path': ['17,1', '17,1,0', '17,1,0,1']}, '17,1,0,0': {'condition': "!(!(i_tx_phy_tx_ip_sync)) == 1'b1", 'action': '', 'block_path': ['17,1', '17,1,0', '17,1,0,0']}, '17,1,0,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': '', 'block_path': ['17,1', '17,1,0', '17,1,0,0', '17,1,0,0,1']}, '17,1,0,0,1,1': {'condition': "(!(i_tx_phy_sd_raw_o) || (i_tx_phy_one_cnt == 3'h6))", 'action': "i_tx_phy_one_cnt <= 3'h0;", 'block_path': ['17,1', '17,1,0', '17,1,0,0', '17,1,0,0,1', '17,1,0,0,1,1']}, '17,1,0,0,1,0': {'condition': "!(!(i_tx_phy_sd_raw_o) || (i_tx_phy_one_cnt == 3'h6))", 'action': "i_tx_phy_one_cnt <= (i_tx_phy_one_cnt + 3'h1);", 'block_path': ['17,1', '17,1,0', '17,1,0,0', '17,1,0,0,1', '17,1,0,0,1,0']}}, {'18,0': {'condition': '', 'action': "i_tx_phy_stuff = (i_tx_phy_one_cnt == 3'h6);", 'block_path': ['18,0']}}, {'19,1': {'condition': '', 'action': '', 'block_path': ['19,1']}, '19,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_sd_bs_o <= 1'h0;", 'block_path': ['19,1', '19,1,1']}, '19,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['19,1', '19,1,0']}, '19,1,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': "i_tx_phy_sd_bs_o <= ( ( !( i_tx_phy_tx_ip_sync) ) ? ( 1'b0 ) : ( ( ( ( i_tx_phy_one_cnt == 3'h6 ) ) ? ( 1'b0 ) : ( i_tx_phy_sd_raw_o ) ) ) );", 'block_path': ['19,1', '19,1,0', '19,1,0,1']}}, {'20,1': {'condition': '', 'action': '', 'block_path': ['20,1']}, '20,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_sd_nrzi_o <= 1'b1;", 'block_path': ['20,1', '20,1,1']}, '20,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['20,1', '20,1,0']}, '20,1,0,1': {'condition': '(!(i_tx_phy_tx_ip_sync) || !(i_tx_phy_txoe_r1))', 'action': "i_tx_phy_sd_nrzi_o <= 1'b1;", 'block_path': ['20,1', '20,1,0', '20,1,0,1']}, '20,1,0,0': {'condition': '!(!(i_tx_phy_tx_ip_sync) || !(i_tx_phy_txoe_r1))', 'action': '', 'block_path': ['20,1', '20,1,0', '20,1,0,0']}, '20,1,0,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': 'i_tx_phy_sd_nrzi_o <= ( ( i_tx_phy_sd_bs_o ) ? ( i_tx_phy_sd_nrzi_o ) : ( ~( i_tx_phy_sd_nrzi_o) ) );', 'block_path': ['20,1', '20,1,0', '20,1,0,0', '20,1,0,0,1']}}, {'21,1': {'condition': '', 'action': '', 'block_path': ['21,1']}, '21,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_app_eop <= 1'b0;", 'block_path': ['21,1', '21,1,1']}, '21,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['21,1', '21,1,0']}, '21,1,0,1': {'condition': "(i_tx_phy_ld_eop_d) == 1'b1", 'action': "i_tx_phy_app_eop <= 1'b1;", 'block_path': ['21,1', '21,1,0', '21,1,0,1']}, '21,1,0,0': {'condition': "!(i_tx_phy_ld_eop_d) == 1'b1", 'action': '', 'block_path': ['21,1', '21,1,0', '21,1,0,0']}, '21,1,0,0,1': {'condition': "(i_tx_phy_app_eop_sync2) == 1'b1", 'action': "i_tx_phy_app_eop <= 1'b0;", 'block_path': ['21,1', '21,1,0', '21,1,0,0', '21,1,0,0,1']}}, {'22,1': {'condition': '', 'action': '', 'block_path': ['22,1']}, '22,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_app_eop_sync1 <= 1'b0;", 'block_path': ['22,1', '22,1,1']}, '22,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['22,1', '22,1,0']}, '22,1,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': 'i_tx_phy_app_eop_sync1 <= i_tx_phy_app_eop;', 'block_path': ['22,1', '22,1,0', '22,1,0,1']}}, {'23,1': {'condition': '', 'action': '', 'block_path': ['23,1']}, '23,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_app_eop_sync2 <= 1'b0;", 'block_path': ['23,1', '23,1,1']}, '23,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['23,1', '23,1,0']}, '23,1,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': 'i_tx_phy_app_eop_sync2 <= i_tx_phy_app_eop_sync1;', 'block_path': ['23,1', '23,1,0', '23,1,0,1']}}, {'24,1': {'condition': '', 'action': '', 'block_path': ['24,1']}, '24,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_app_eop_sync3 <= 1'b0;", 'block_path': ['24,1', '24,1,1']}, '24,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['24,1', '24,1,0']}, '24,1,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': 'i_tx_phy_app_eop_sync3 <= ( i_tx_phy_app_eop_sync2 | ( i_tx_phy_app_eop_sync3 & !( i_tx_phy_app_eop_sync4) ) );', 'block_path': ['24,1', '24,1,0', '24,1,0,1']}}, {'25,1': {'condition': '', 'action': '', 'block_path': ['25,1']}, '25,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_app_eop_sync4 <= 1'b0;", 'block_path': ['25,1', '25,1,1']}, '25,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['25,1', '25,1,0']}, '25,1,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': 'i_tx_phy_app_eop_sync4 <= i_tx_phy_app_eop_sync3;', 'block_path': ['25,1', '25,1,0', '25,1,0,1']}}, {'26,1': {'condition': '', 'action': '', 'block_path': ['26,1']}, '26,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_txoe_r1 <= 1'b0;", 'block_path': ['26,1', '26,1,1']}, '26,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['26,1', '26,1,0']}, '26,1,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': 'i_tx_phy_txoe_r1 <= i_tx_phy_tx_ip_sync;', 'block_path': ['26,1', '26,1,0', '26,1,0,1']}}, {'27,1': {'condition': '', 'action': '', 'block_path': ['27,1']}, '27,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_txoe_r2 <= 1'b0;", 'block_path': ['27,1', '27,1,1']}, '27,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['27,1', '27,1,0']}, '27,1,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': 'i_tx_phy_txoe_r2 <= i_tx_phy_txoe_r1;', 'block_path': ['27,1', '27,1,0', '27,1,0,1']}}, {'28,1': {'condition': '', 'action': '', 'block_path': ['28,1']}, '28,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_txoe <= 1'b1;", 'block_path': ['28,1', '28,1,1']}, '28,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['28,1', '28,1,0']}, '28,1,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': 'i_tx_phy_txoe <= !((i_tx_phy_txoe_r1 | i_tx_phy_txoe_r2));', 'block_path': ['28,1', '28,1,0', '28,1,0,1']}}, {'29,1': {'condition': '', 'action': '', 'block_path': ['29,1']}, '29,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_txdp <= 1'b1;", 'block_path': ['29,1', '29,1,1']}, '29,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['29,1', '29,1,0']}, '29,1,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': 'i_tx_phy_txdp <= ( ( phy_tx_mode ) ? ( ( !( i_tx_phy_app_eop_sync3) & i_tx_phy_sd_nrzi_o ) ) : ( i_tx_phy_sd_nrzi_o ) );', 'block_path': ['29,1', '29,1,0', '29,1,0,1']}}, {'30,1': {'condition': '', 'action': '', 'block_path': ['30,1']}, '30,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_txdn <= 1'b0;", 'block_path': ['30,1', '30,1,1']}, '30,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['30,1', '30,1,0']}, '30,1,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': 'i_tx_phy_txdn <= ( ( phy_tx_mode ) ? ( ( !( i_tx_phy_app_eop_sync3) & ~( i_tx_phy_sd_nrzi_o) ) ) : ( i_tx_phy_app_eop_sync3 ) );', 'block_path': ['30,1', '30,1,0', '30,1,0,1']}}, {'31,1': {'condition': '', 'action': '', 'block_path': ['31,1']}, '31,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_tx_phy_state <= 3'd0;", 'block_path': ['31,1', '31,1,1']}, '31,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': 'i_tx_phy_state <= i_tx_phy_next_state;', 'block_path': ['31,1', '31,1,0']}}, {'32,0': {'condition': '', 'action': "i_tx_phy_next_state = i_tx_phy_state;i_tx_phy_tx_ready_d = 1'b0;i_tx_phy_ld_sop_d = 1'b0;i_tx_phy_ld_data_d = 1'b0;i_tx_phy_ld_eop_d = 1'b0;", 'block_path': ['32,0']}, '32,0,1': {'condition': "(i_tx_phy_state) == 3'd0", 'action': '', 'block_path': ['32,0', '32,0,1']}, '32,0,1,1': {'condition': "(TxValid_i) == 1'b1", 'action': "i_tx_phy_ld_sop_d = 1'b1;i_tx_phy_next_state = 3'h1;", 'block_path': ['32,0', '32,0,1', '32,0,1,1']}, '32,0,2': {'condition': "(i_tx_phy_state) == 3'h1", 'action': '', 'block_path': ['32,0', '32,0,2']}, '32,0,2,1': {'condition': "(i_tx_phy_sft_done & !(i_tx_phy_sft_done_r)) == 1'b1", 'action': "i_tx_phy_tx_ready_d = 1'b1;i_tx_phy_ld_data_d = 1'b1;i_tx_phy_next_state = 3'h2;", 'block_path': ['32,0', '32,0,2', '32,0,2,1']}, '32,0,3': {'condition': "(i_tx_phy_state) == 3'h2", 'action': '', 'block_path': ['32,0', '32,0,3']}, '32,0,3,1': {'condition': '(!(i_tx_phy_data_done) && (i_tx_phy_sft_done & !(i_tx_phy_sft_done_r)))', 'action': "i_tx_phy_ld_eop_d = 1'b1;i_tx_phy_next_state = 3'h3;", 'block_path': ['32,0', '32,0,3', '32,0,3,1']}, '32,0,3,1,1': {'condition': '(i_tx_phy_data_done && (i_tx_phy_sft_done & !(i_tx_phy_sft_done_r)))', 'action': "i_tx_phy_tx_ready_d = 1'b1;i_tx_phy_ld_data_d = 1'b1;", 'block_path': ['32,0', '32,0,3', '32,0,3,1', '32,0,3,1,1']}, '32,0,4': {'condition': "(i_tx_phy_state) == 3'h3", 'action': '', 'block_path': ['32,0', '32,0,4']}, '32,0,4,1': {'condition': "(i_tx_phy_app_eop_sync3) == 1'b1", 'action': "i_tx_phy_next_state = 3'h4;", 'block_path': ['32,0', '32,0,4', '32,0,4,1']}, '32,0,5': {'condition': "(i_tx_phy_state) == 3'h4", 'action': '', 'block_path': ['32,0', '32,0,5']}, '32,0,5,1': {'condition': '(!(i_tx_phy_app_eop_sync3) && i_rx_phy_fs_ce)', 'action': "i_tx_phy_next_state = 3'h5;", 'block_path': ['32,0', '32,0,5', '32,0,5,1']}, '32,0,6': {'condition': "(i_tx_phy_state) == 3'h5", 'action': '', 'block_path': ['32,0', '32,0,6']}, '32,0,6,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': "i_tx_phy_next_state = 3'd0;", 'block_path': ['32,0', '32,0,6', '32,0,6,1']}}, {'33,0': {'condition': '', 'action': 'DataIn_o = i_rx_phy_hold_reg;', 'block_path': ['33,0']}}, {'34,0': {'condition': '', 'action': 'RxValid_o = i_rx_phy_rx_valid;', 'block_path': ['34,0']}}, {'35,0': {'condition': '', 'action': 'RxActive_o = i_rx_phy_rx_active;', 'block_path': ['35,0']}}, {'36,0': {'condition': '', 'action': 'RxError_o = ((i_rx_phy_sync_err | i_rx_phy_bit_stuff_err) | i_rx_phy_byte_err);', 'block_path': ['36,0']}}, {'37,0': {'condition': '', 'action': 'LineState_o = {i_rx_phy_rxdn_s1, i_rx_phy_rxdp_s1};', 'block_path': ['37,0']}}, {'38,1': {'condition': '', 'action': 'i_rx_phy_rx_en <= txoe;', 'block_path': ['38,1']}}, {'39,1': {'condition': '', 'action': 'i_rx_phy_sync_err <= (!(i_rx_phy_rx_active) & i_rx_phy_sync_err_d);', 'block_path': ['39,1']}}, {'40,1': {'condition': '', 'action': 'i_rx_phy_rxd_s0 <= rxd;', 'block_path': ['40,1']}}, {'41,1': {'condition': '', 'action': 'i_rx_phy_rxd_s1 <= i_rx_phy_rxd_s0;', 'block_path': ['41,1']}}, {'42,1': {'condition': '', 'action': '', 'block_path': ['42,1']}, '42,1,1': {'condition': '(i_rx_phy_rxd_s0 && i_rx_phy_rxd_s1)', 'action': "i_rx_phy_rxd_s <= 1'b1;", 'block_path': ['42,1', '42,1,1']}, '42,1,0': {'condition': '!(i_rx_phy_rxd_s0 && i_rx_phy_rxd_s1)', 'action': '', 'block_path': ['42,1', '42,1,0']}, '42,1,0,1': {'condition': '(!(i_rx_phy_rxd_s0) && !(i_rx_phy_rxd_s1))', 'action': "i_rx_phy_rxd_s <= 1'b0;", 'block_path': ['42,1', '42,1,0', '42,1,0,1']}}, {'43,1': {'condition': '', 'action': 'i_rx_phy_rxdp_s0 <= rxdp;', 'block_path': ['43,1']}}, {'44,1': {'condition': '', 'action': 'i_rx_phy_rxdp_s1 <= i_rx_phy_rxdp_s0;', 'block_path': ['44,1']}}, {'45,1': {'condition': '', 'action': 'i_rx_phy_rxdp_s_r <= (i_rx_phy_rxdp_s0 & i_rx_phy_rxdp_s1);', 'block_path': ['45,1']}}, {'46,1': {'condition': '', 'action': 'i_rx_phy_rxdp_s <= ((i_rx_phy_rxdp_s0 & i_rx_phy_rxdp_s1) | i_rx_phy_rxdp_s_r);', 'block_path': ['46,1']}}, {'47,1': {'condition': '', 'action': 'i_rx_phy_rxdn_s0 <= rxdn;', 'block_path': ['47,1']}}, {'48,1': {'condition': '', 'action': 'i_rx_phy_rxdn_s1 <= i_rx_phy_rxdn_s0;', 'block_path': ['48,1']}}, {'49,1': {'condition': '', 'action': 'i_rx_phy_rxdn_s_r <= (i_rx_phy_rxdn_s0 & i_rx_phy_rxdn_s1);', 'block_path': ['49,1']}}, {'50,1': {'condition': '', 'action': 'i_rx_phy_rxdn_s <= ((i_rx_phy_rxdn_s0 & i_rx_phy_rxdn_s1) | i_rx_phy_rxdn_s_r);', 'block_path': ['50,1']}}, {'51,1': {'condition': '', 'action': '', 'block_path': ['51,1']}, '51,1,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': 'i_rx_phy_se0_s <= (!(i_rx_phy_rxdp_s) & !(i_rx_phy_rxdn_s));', 'block_path': ['51,1', '51,1,1']}}, {'52,1': {'condition': '', 'action': 'i_rx_phy_rxd_r <= i_rx_phy_rxd_s;', 'block_path': ['52,1']}}, {'53,1': {'condition': '', 'action': '', 'block_path': ['53,1']}, '53,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_rx_phy_dpll_state <= 2'h1;", 'block_path': ['53,1', '53,1,1']}, '53,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': 'i_rx_phy_dpll_state <= i_rx_phy_dpll_next_state;', 'block_path': ['53,1', '53,1,0']}}, {'54,0': {'condition': '', 'action': "i_rx_phy_fs_ce_d = 1'b0;", 'block_path': ['54,0']}, '54,0,1': {'condition': "(i_rx_phy_dpll_state) == 2'h0", 'action': '', 'block_path': ['54,0', '54,0,1']}, '54,0,1,1': {'condition': '(i_rx_phy_rx_en && (i_rx_phy_rxd_r != i_rx_phy_rxd_s))', 'action': "i_rx_phy_dpll_next_state = 2'h0;", 'block_path': ['54,0', '54,0,1', '54,0,1,1']}, '54,0,1,0': {'condition': '!(i_rx_phy_rx_en && (i_rx_phy_rxd_r != i_rx_phy_rxd_s))', 'action': "i_rx_phy_dpll_next_state = 2'h1;", 'block_path': ['54,0', '54,0,1', '54,0,1,0']}, '54,0,2': {'condition': "(i_rx_phy_dpll_state) == 2'h1", 'action': "i_rx_phy_fs_ce_d = 1'b1;", 'block_path': ['54,0', '54,0,2']}, '54,0,2,1': {'condition': '(i_rx_phy_rx_en && (i_rx_phy_rxd_r != i_rx_phy_rxd_s))', 'action': "i_rx_phy_dpll_next_state = 2'h3;", 'block_path': ['54,0', '54,0,2', '54,0,2,1']}, '54,0,2,0': {'condition': '!(i_rx_phy_rx_en && (i_rx_phy_rxd_r != i_rx_phy_rxd_s))', 'action': "i_rx_phy_dpll_next_state = 2'h2;", 'block_path': ['54,0', '54,0,2', '54,0,2,0']}, '54,0,3': {'condition': "(i_rx_phy_dpll_state) == 2'h2", 'action': '', 'block_path': ['54,0', '54,0,3']}, '54,0,3,1': {'condition': '(i_rx_phy_rx_en && (i_rx_phy_rxd_r != i_rx_phy_rxd_s))', 'action': "i_rx_phy_dpll_next_state = 2'h0;", 'block_path': ['54,0', '54,0,3', '54,0,3,1']}, '54,0,3,0': {'condition': '!(i_rx_phy_rx_en && (i_rx_phy_rxd_r != i_rx_phy_rxd_s))', 'action': "i_rx_phy_dpll_next_state = 2'h3;", 'block_path': ['54,0', '54,0,3', '54,0,3,0']}, '54,0,4': {'condition': "(i_rx_phy_dpll_state) == 2'h3", 'action': '', 'block_path': ['54,0', '54,0,4']}, '54,0,4,1': {'condition': '(i_rx_phy_rx_en && (i_rx_phy_rxd_r != i_rx_phy_rxd_s))', 'action': "i_rx_phy_dpll_next_state = 2'h0;", 'block_path': ['54,0', '54,0,4', '54,0,4,1']}, '54,0,4,0': {'condition': '!(i_rx_phy_rx_en && (i_rx_phy_rxd_r != i_rx_phy_rxd_s))', 'action': "i_rx_phy_dpll_next_state = 2'h0;", 'block_path': ['54,0', '54,0,4', '54,0,4,0']}}, {'55,1': {'condition': '', 'action': 'i_rx_phy_fs_ce_r1 <= i_rx_phy_fs_ce_d;', 'block_path': ['55,1']}}, {'56,1': {'condition': '', 'action': 'i_rx_phy_fs_ce_r2 <= i_rx_phy_fs_ce_r1;', 'block_path': ['56,1']}}, {'57,1': {'condition': '', 'action': 'i_rx_phy_fs_ce <= i_rx_phy_fs_ce_r2;', 'block_path': ['57,1']}}, {'58,1': {'condition': '', 'action': '', 'block_path': ['58,1']}, '58,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_rx_phy_fs_state <= 3'h0;", 'block_path': ['58,1', '58,1,1']}, '58,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': 'i_rx_phy_fs_state <= i_rx_phy_fs_next_state;', 'block_path': ['58,1', '58,1,0']}}, {'59,0': {'condition': '', 'action': "i_rx_phy_synced_d = 1'b0;i_rx_phy_sync_err_d = 1'b0;i_rx_phy_fs_next_state = i_rx_phy_fs_state;", 'block_path': ['59,0']}, '59,0,1': {'condition': '( ( ( i_rx_phy_fs_ce && !( i_rx_phy_rx_active) ) && !( ( !( i_rx_phy_rxdp_s) & !( i_rx_phy_rxdn_s) )) ) && !( i_rx_phy_se0_s) )', 'action': '', 'block_path': ['59,0', '59,0,1']}, '59,0,1,1': {'condition': "(i_rx_phy_fs_state) == 3'h0", 'action': '', 'block_path': ['59,0', '59,0,1', '59,0,1,1']}, '59,0,1,1,1': {'condition': '((!(i_rx_phy_rxdp_s) & i_rx_phy_rxdn_s) && i_rx_phy_rx_en)', 'action': "i_rx_phy_fs_next_state = 3'h1;", 'block_path': ['59,0', '59,0,1', '59,0,1,1', '59,0,1,1,1']}, '59,0,1,2': {'condition': "(i_rx_phy_fs_state) == 3'h1", 'action': '', 'block_path': ['59,0', '59,0,1', '59,0,1,2']}, '59,0,1,2,1': {'condition': '((i_rx_phy_rxdp_s & !(i_rx_phy_rxdn_s)) && i_rx_phy_rx_en)', 'action': "i_rx_phy_fs_next_state = 3'h2;", 'block_path': ['59,0', '59,0,1', '59,0,1,2', '59,0,1,2,1']}, '59,0,1,2,0': {'condition': '!((i_rx_phy_rxdp_s & !(i_rx_phy_rxdn_s)) && i_rx_phy_rx_en)', 'action': "i_rx_phy_sync_err_d = 1'b1;i_rx_phy_fs_next_state = 3'h0;", 'block_path': ['59,0', '59,0,1', '59,0,1,2', '59,0,1,2,0']}, '59,0,1,3': {'condition': "(i_rx_phy_fs_state) == 3'h2", 'action': '', 'block_path': ['59,0', '59,0,1', '59,0,1,3']}, '59,0,1,3,1': {'condition': '((!(i_rx_phy_rxdp_s) & i_rx_phy_rxdn_s) && i_rx_phy_rx_en)', 'action': "i_rx_phy_fs_next_state = 3'h3;", 'block_path': ['59,0', '59,0,1', '59,0,1,3', '59,0,1,3,1']}, '59,0,1,3,0': {'condition': '!((!(i_rx_phy_rxdp_s) & i_rx_phy_rxdn_s) && i_rx_phy_rx_en)', 'action': "i_rx_phy_sync_err_d = 1'b1;i_rx_phy_fs_next_state = 3'h0;", 'block_path': ['59,0', '59,0,1', '59,0,1,3', '59,0,1,3,0']}, '59,0,1,4': {'condition': "(i_rx_phy_fs_state) == 3'h3", 'action': '', 'block_path': ['59,0', '59,0,1', '59,0,1,4']}, '59,0,1,4,1': {'condition': '((i_rx_phy_rxdp_s & !(i_rx_phy_rxdn_s)) && i_rx_phy_rx_en)', 'action': "i_rx_phy_fs_next_state = 3'h4;", 'block_path': ['59,0', '59,0,1', '59,0,1,4', '59,0,1,4,1']}, '59,0,1,4,0': {'condition': '!((i_rx_phy_rxdp_s & !(i_rx_phy_rxdn_s)) && i_rx_phy_rx_en)', 'action': "i_rx_phy_sync_err_d = 1'b1;i_rx_phy_fs_next_state = 3'h0;", 'block_path': ['59,0', '59,0,1', '59,0,1,4', '59,0,1,4,0']}, '59,0,1,5': {'condition': "(i_rx_phy_fs_state) == 3'h4", 'action': '', 'block_path': ['59,0', '59,0,1', '59,0,1,5']}, '59,0,1,5,1': {'condition': '((!(i_rx_phy_rxdp_s) & i_rx_phy_rxdn_s) && i_rx_phy_rx_en)', 'action': "i_rx_phy_fs_next_state = 3'h5;", 'block_path': ['59,0', '59,0,1', '59,0,1,5', '59,0,1,5,1']}, '59,0,1,5,0': {'condition': '!((!(i_rx_phy_rxdp_s) & i_rx_phy_rxdn_s) && i_rx_phy_rx_en)', 'action': "i_rx_phy_sync_err_d = 1'b1;i_rx_phy_fs_next_state = 3'h0;", 'block_path': ['59,0', '59,0,1', '59,0,1,5', '59,0,1,5,0']}, '59,0,1,6': {'condition': "(i_rx_phy_fs_state) == 3'h5", 'action': '', 'block_path': ['59,0', '59,0,1', '59,0,1,6']}, '59,0,1,6,1': {'condition': '((i_rx_phy_rxdp_s & !(i_rx_phy_rxdn_s)) && i_rx_phy_rx_en)', 'action': "i_rx_phy_fs_next_state = 3'h6;", 'block_path': ['59,0', '59,0,1', '59,0,1,6', '59,0,1,6,1']}, '59,0,1,6,0': {'condition': '!((i_rx_phy_rxdp_s & !(i_rx_phy_rxdn_s)) && i_rx_phy_rx_en)', 'action': '', 'block_path': ['59,0', '59,0,1', '59,0,1,6', '59,0,1,6,0']}, '59,0,1,6,0,1': {'condition': '((!(i_rx_phy_rxdp_s) & i_rx_phy_rxdn_s) && i_rx_phy_rx_en)', 'action': "i_rx_phy_fs_next_state = 3'h0;i_rx_phy_synced_d = 1'b1;", 'block_path': ['59,0', '59,0,1', '59,0,1,6', '59,0,1,6,0', '59,0,1,6,0,1']}, '59,0,1,6,0,0': {'condition': '!((!(i_rx_phy_rxdp_s) & i_rx_phy_rxdn_s) && i_rx_phy_rx_en)', 'action': "i_rx_phy_sync_err_d = 1'b1;i_rx_phy_fs_next_state = 3'h0;", 'block_path': ['59,0', '59,0,1', '59,0,1,6', '59,0,1,6,0', '59,0,1,6,0,0']}, '59,0,1,7': {'condition': "(i_rx_phy_fs_state) == 3'h6", 'action': '', 'block_path': ['59,0', '59,0,1', '59,0,1,7']}, '59,0,1,7,1': {'condition': '((!(i_rx_phy_rxdp_s) & i_rx_phy_rxdn_s) && i_rx_phy_rx_en)', 'action': "i_rx_phy_fs_next_state = 3'h7;", 'block_path': ['59,0', '59,0,1', '59,0,1,7', '59,0,1,7,1']}, '59,0,1,7,0': {'condition': '!((!(i_rx_phy_rxdp_s) & i_rx_phy_rxdn_s) && i_rx_phy_rx_en)', 'action': "i_rx_phy_sync_err_d = 1'b1;i_rx_phy_fs_next_state = 3'h0;", 'block_path': ['59,0', '59,0,1', '59,0,1,7', '59,0,1,7,0']}, '59,0,1,8': {'condition': "(i_rx_phy_fs_state) == 3'h7", 'action': '', 'block_path': ['59,0', '59,0,1', '59,0,1,8']}, '59,0,1,8,1': {'condition': "(!(i_rx_phy_rxdp_s) & i_rx_phy_rxdn_s) == 1'b1", 'action': "i_rx_phy_synced_d = 1'b1;i_rx_phy_fs_next_state = 3'h0;", 'block_path': ['59,0', '59,0,1', '59,0,1,8', '59,0,1,8,1']}}, {'60,1': {'condition': '', 'action': '', 'block_path': ['60,1']}, '60,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_rx_phy_rx_active <= 1'b0;", 'block_path': ['60,1', '60,1,1']}, '60,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['60,1', '60,1,0']}, '60,1,0,1': {'condition': '(i_rx_phy_synced_d && i_rx_phy_rx_en)', 'action': "i_rx_phy_rx_active <= 1'b1;", 'block_path': ['60,1', '60,1,0', '60,1,0,1']}, '60,1,0,0': {'condition': '!(i_rx_phy_synced_d && i_rx_phy_rx_en)', 'action': '', 'block_path': ['60,1', '60,1,0', '60,1,0,0']}, '60,1,0,0,1': {'condition': '((!(i_rx_phy_rxdp_s) & !(i_rx_phy_rxdn_s)) && i_rx_phy_rx_valid_r)', 'action': "i_rx_phy_rx_active <= 1'b0;", 'block_path': ['60,1', '60,1,0', '60,1,0,0', '60,1,0,0,1']}}, {'61,1': {'condition': '', 'action': '', 'block_path': ['61,1']}, '61,1,1': {'condition': "(i_rx_phy_rx_valid) == 1'b1", 'action': "i_rx_phy_rx_valid_r <= 1'b1;", 'block_path': ['61,1', '61,1,1']}, '61,1,0': {'condition': "!(i_rx_phy_rx_valid) == 1'b1", 'action': '', 'block_path': ['61,1', '61,1,0']}, '61,1,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': "i_rx_phy_rx_valid_r <= 1'b0;", 'block_path': ['61,1', '61,1,0', '61,1,0,1']}}, {'62,1': {'condition': '', 'action': '', 'block_path': ['62,1']}, '62,1,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': 'i_rx_phy_sd_r <= i_rx_phy_rxd_s;', 'block_path': ['62,1', '62,1,1']}}, {'63,1': {'condition': '', 'action': '', 'block_path': ['63,1']}, '63,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_rx_phy_sd_nrzi <= 1'b0;", 'block_path': ['63,1', '63,1,1']}, '63,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['63,1', '63,1,0']}, '63,1,0,1': {'condition': "(!(i_rx_phy_rx_active)) == 1'b1", 'action': "i_rx_phy_sd_nrzi <= 1'b1;", 'block_path': ['63,1', '63,1,0', '63,1,0,1']}, '63,1,0,0': {'condition': "!(!(i_rx_phy_rx_active)) == 1'b1", 'action': '', 'block_path': ['63,1', '63,1,0', '63,1,0,0']}, '63,1,0,0,1': {'condition': '(i_rx_phy_rx_active && i_rx_phy_fs_ce)', 'action': 'i_rx_phy_sd_nrzi <= !((i_rx_phy_rxd_s ^ i_rx_phy_sd_r));', 'block_path': ['63,1', '63,1,0', '63,1,0,0', '63,1,0,0,1']}}, {'64,1': {'condition': '', 'action': '', 'block_path': ['64,1']}, '64,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_rx_phy_one_cnt <= 3'h0;", 'block_path': ['64,1', '64,1,1']}, '64,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['64,1', '64,1,0']}, '64,1,0,1': {'condition': "(!(i_rx_phy_shift_en)) == 1'b1", 'action': "i_rx_phy_one_cnt <= 3'h0;", 'block_path': ['64,1', '64,1,0', '64,1,0,1']}, '64,1,0,0': {'condition': "!(!(i_rx_phy_shift_en)) == 1'b1", 'action': '', 'block_path': ['64,1', '64,1,0', '64,1,0,0']}, '64,1,0,0,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': '', 'block_path': ['64,1', '64,1,0', '64,1,0,0', '64,1,0,0,1']}, '64,1,0,0,1,1': {'condition': "(!(i_rx_phy_sd_nrzi) || (i_rx_phy_one_cnt == 3'h6))", 'action': "i_rx_phy_one_cnt <= 3'h0;", 'block_path': ['64,1', '64,1,0', '64,1,0,0', '64,1,0,0,1', '64,1,0,0,1,1']}, '64,1,0,0,1,0': {'condition': "!(!(i_rx_phy_sd_nrzi) || (i_rx_phy_one_cnt == 3'h6))", 'action': "i_rx_phy_one_cnt <= (i_rx_phy_one_cnt + 3'h1);", 'block_path': ['64,1', '64,1,0', '64,1,0,0', '64,1,0,0,1', '64,1,0,0,1,0']}}, {'65,1': {'condition': '', 'action': "i_rx_phy_bit_stuff_err <= ( ( ( ( ( i_rx_phy_one_cnt == 3'h6 ) & i_rx_phy_sd_nrzi ) & i_rx_phy_fs_ce ) & !( ( !( i_rx_phy_rxdp_s) & !( i_rx_phy_rxdn_s) )) ) & i_rx_phy_rx_active );", 'block_path': ['65,1']}}, {'66,1': {'condition': '', 'action': '', 'block_path': ['66,1']}, '66,1,1': {'condition': "(i_rx_phy_fs_ce) == 1'b1", 'action': 'i_rx_phy_shift_en <= (i_rx_phy_synced_d | i_rx_phy_rx_active);', 'block_path': ['66,1', '66,1,1']}}, {'67,1': {'condition': '', 'action': '', 'block_path': ['67,1']}, '67,1,1': {'condition': "((i_rx_phy_fs_ce && i_rx_phy_shift_en) && !((i_rx_phy_one_cnt == 3'h6)))", 'action': 'i_rx_phy_hold_reg <= {i_rx_phy_sd_nrzi, i_rx_phy_hold_reg[7:1]};', 'block_path': ['67,1', '67,1,1']}}, {'68,1': {'condition': '', 'action': '', 'block_path': ['68,1']}, '68,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_rx_phy_bit_cnt <= 3'b0;", 'block_path': ['68,1', '68,1,1']}, '68,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['68,1', '68,1,0']}, '68,1,0,1': {'condition': "(!(i_rx_phy_shift_en)) == 1'b1", 'action': "i_rx_phy_bit_cnt <= 3'h0;", 'block_path': ['68,1', '68,1,0', '68,1,0,1']}, '68,1,0,0': {'condition': "!(!(i_rx_phy_shift_en)) == 1'b1", 'action': '', 'block_path': ['68,1', '68,1,0', '68,1,0,0']}, '68,1,0,0,1': {'condition': "(i_rx_phy_fs_ce && !((i_rx_phy_one_cnt == 3'h6)))", 'action': "i_rx_phy_bit_cnt <= (i_rx_phy_bit_cnt + 3'h1);", 'block_path': ['68,1', '68,1,0', '68,1,0,0', '68,1,0,0,1']}}, {'69,1': {'condition': '', 'action': '', 'block_path': ['69,1']}, '69,1,1': {'condition': "(!(rst)) == 1'b1", 'action': "i_rx_phy_rx_valid1 <= 1'b0;", 'block_path': ['69,1', '69,1,1']}, '69,1,0': {'condition': "!(!(rst)) == 1'b1", 'action': '', 'block_path': ['69,1', '69,1,0']}, '69,1,0,1': {'condition': "((i_rx_phy_fs_ce && !((i_rx_phy_one_cnt == 3'h6))) && (i_rx_phy_bit_cnt == 3'h7))", 'action': "i_rx_phy_rx_valid1 <= 1'b1;", 'block_path': ['69,1', '69,1,0', '69,1,0,1']}, '69,1,0,0': {'condition': "!((i_rx_phy_fs_ce && !((i_rx_phy_one_cnt == 3'h6))) && (i_rx_phy_bit_cnt == 3'h7))", 'action': '', 'block_path': ['69,1', '69,1,0', '69,1,0,0']}, '69,1,0,0,1': {'condition': "((i_rx_phy_rx_valid1 && i_rx_phy_fs_ce) && !((i_rx_phy_one_cnt == 3'h6)))", 'action': "i_rx_phy_rx_valid1 <= 1'b0;", 'block_path': ['69,1', '69,1,0', '69,1,0,0', '69,1,0,0,1']}}, {'70,1': {'condition': '', 'action': "i_rx_phy_rx_valid <= ((!((i_rx_phy_one_cnt == 3'h6)) & i_rx_phy_rx_valid1) & i_rx_phy_fs_ce);", 'block_path': ['70,1']}}, {'71,1': {'condition': '', 'action': 'i_rx_phy_se0_r <= (!(i_rx_phy_rxdp_s) & !(i_rx_phy_rxdn_s));', 'block_path': ['71,1']}}, {'72,1': {'condition': '', 'action': 'i_rx_phy_byte_err <= ( ( ( ( !( i_rx_phy_rxdp_s) & !( i_rx_phy_rxdn_s) ) & !( i_rx_phy_se0_r) ) & |( i_rx_phy_bit_cnt[2:1]) ) & i_rx_phy_rx_active );', 'block_path': ['72,1']}}]
 
-list_CDFG = [{'0,0,1': {'condition': "(int_state != 4'b0001) | (csr_state != 5'b00001)", 'action': "hold_flag_o = 1'b1;", 'block_path': ['0,0', '0,0,1']}, '0,0,0': {'condition': "!((int_state != 4'b0001) | (csr_state != 5'b00001))", 'action': "hold_flag_o = 1'b0;", 'block_path': ['0,0', '0,0,0']}}, {'1,0': {'condition': '', 'action': '', 'block_path': ['1,0']}, '1,0,1': {'condition': "(rst == 1'b0)", 'action': "int_state = 4'b0001;", 'block_path': ['1,0', '1,0,1']}, '1,0,0': {'condition': "!(rst == 1'b0)", 'action': '', 'block_path': ['1,0', '1,0,0']}, '1,0,0,1': {'condition': "(inst_i == 32'h73 || inst_i == 32'h00100073)", 'action': '', 'block_path': ['1,0', '1,0,0', '1,0,0,1']}, '1,0,0,1,1': {'condition': "(div_started_i == 1'b0)", 'action': "int_state = 4'b0010;", 'block_path': ['1,0', '1,0,0', '1,0,0,1', '1,0,0,1,1']}, '1,0,0,1,0': {'condition': "!(div_started_i == 1'b0)", 'action': "int_state = 4'b0001;", 'block_path': ['1,0', '1,0,0', '1,0,0,1', '1,0,0,1,0']}, '1,0,0,0': {'condition': "!(inst_i == 32'h73 || inst_i == 32'h00100073)", 'action': '', 'block_path': ['1,0', '1,0,0', '1,0,0,0']}, '1,0,0,0,1': {'condition': "(int_flag_i != 8'h0 && global_int_en_i == 1'b1)", 'action': "int_state = 4'b0100;", 'block_path': ['1,0', '1,0,0', '1,0,0,0', '1,0,0,0,1']}, '1,0,0,0,0': {'condition': "!(int_flag_i != 8'h0 && global_int_en_i == 1'b1)", 'action': '', 'block_path': ['1,0', '1,0,0', '1,0,0,0', '1,0,0,0,0']}, '1,0,0,0,0,1': {'condition': "(inst_i == 32'h30200073)", 'action': "int_state = 4'b1000;", 'block_path': ['1,0', '1,0,0', '1,0,0,0', '1,0,0,0,0', '1,0,0,0,0,1']}, '1,0,0,0,0,0': {'condition': "!(inst_i == 32'h30200073)", 'action': "int_state = 4'b0001;", 'block_path': ['1,0', '1,0,0', '1,0,0,0', '1,0,0,0,0', '1,0,0,0,0,0']}}, {'2,1': {'condition': '', 'action': '', 'block_path': ['2,1']}, '2,1,1': {'condition': "(rst == 1'b0)", 'action': "cause <= 32'h0;", 'block_path': ['2,1', '2,1,1']}, '2,1,0': {'condition': "!(rst == 1'b0)", 'action': "if(csr_state == 5'b00001 && int_state == 4'b0010)cause <= 32'd10;", 'block_path': ['2,1', '2,1,0']}, '2,1,0,1': {'condition': "(inst_i) == 32'h73", 'action': "cause <= 32'd11;", 'block_path': ['2,1', '2,1,0', '2,1,0,1']}, '2,1,0,2': {'condition': "(inst_i) == 32'h00100073", 'action': "cause <= 32'd3;", 'block_path': ['2,1', '2,1,0', '2,1,0,2']}, '2,1,0,3': {'condition': 'default', 'action': '', 'block_path': ['2,1', '2,1,0', '2,1,0,3']}, '2,0': {'condition': '!', 'action': '', 'block_path': ['2,0']}, '2,0,1': {'condition': "(int_state == 4'b0100)", 'action': "cause <= 32'h80000004;", 'block_path': ['2,0', '2,0,1']}}, {'3,1': {'condition': '', 'action': '', 'block_path': ['3,1']}, '3,1,1': {'condition': "(rst == 1'b0)", 'action': "csr_state <= 5'b00001;inst_addr <= 32'h0;", 'block_path': ['3,1', '3,1,1']}, '3,1,0': {'condition': "!(rst == 1'b0)", 'action': '', 'block_path': ['3,1', '3,1,0']}, '3,1,0,1': {'condition': "(csr_state) == 5'b00001", 'action': '', 'block_path': ['3,1', '3,1,0', '3,1,0,1']}, '3,1,0,1,1': {'condition': "(int_state == 4'b0010)", 'action': "csr_state <= 5'b00100;", 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,1']}, '3,1,0,1,1,1': {'condition': "(jump_flag_i == 1'b1)", 'action': "inst_addr <= jump_addr_i - 4'h4;", 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,1', '3,1,0,1,1,1']}, '3,1,0,1,1,0': {'condition': "!(jump_flag_i == 1'b1)", 'action': 'inst_addr <= inst_addr_i;', 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,1', '3,1,0,1,1,0']}, '3,1,0,1,0': {'condition': "!(int_state == 4'b0010)", 'action': '', 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0']}, '3,1,0,1,0,1': {'condition': "(int_state == 4'b0100)", 'action': "csr_state <= 5'b00100;", 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0', '3,1,0,1,0,1']}, '3,1,0,1,0,1,1': {'condition': "(jump_flag_i == 1'b1)", 'action': 'inst_addr <= jump_addr_i;', 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0', '3,1,0,1,0,1', '3,1,0,1,0,1,1']}, '3,1,0,1,0,1,0': {'condition': "!(jump_flag_i == 1'b1)", 'action': '', 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0', '3,1,0,1,0,1', '3,1,0,1,0,1,0']}, '3,1,0,1,0,1,0,1': {'condition': "(div_started_i == 1'b1)", 'action': "inst_addr <= inst_addr_i - 4'h4;", 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0', '3,1,0,1,0,1', '3,1,0,1,0,1,0', '3,1,0,1,0,1,0,1']}, '3,1,0,1,0,1,0,0': {'condition': "!(div_started_i == 1'b1)", 'action': 'inst_addr <= inst_addr_i;', 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0', '3,1,0,1,0,1', '3,1,0,1,0,1,0', '3,1,0,1,0,1,0,0']}, '3,1,0,1,0,0': {'condition': "!(int_state == 4'b0100)", 'action': '', 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0', '3,1,0,1,0,0']}, '3,1,0,1,0,0,1': {'condition': "(int_state == 4'b1000)", 'action': "csr_state <= 5'b01000;", 'block_path': ['3,1', '3,1,0', '3,1,0,1', '3,1,0,1,0', '3,1,0,1,0,0', '3,1,0,1,0,0,1']}, '3,1,0,2': {'condition': "(csr_state) == 5'b00100", 'action': "csr_state <= 5'b00010;", 'block_path': ['3,1', '3,1,0', '3,1,0,2']}, '3,1,0,3': {'condition': "(csr_state) == 5'b00010", 'action': "csr_state <= 5'b10000;", 'block_path': ['3,1', '3,1,0', '3,1,0,3']}, '3,1,0,4': {'condition': "(csr_state) == 5'b10000", 'action': "csr_state <= 5'b00001;", 'block_path': ['3,1', '3,1,0', '3,1,0,4']}, '3,1,0,5': {'condition': "(csr_state) == 5'b01000", 'action': "csr_state <= 5'b00001;", 'block_path': ['3,1', '3,1,0', '3,1,0,5']}, '3,1,0,6': {'condition': 'default', 'action': "csr_state <= 5'b00001;", 'block_path': ['3,1', '3,1,0', '3,1,0,6']}}, {'4,1': {'condition': '', 'action': '', 'block_path': ['4,1']}, '4,1,1': {'condition': "(rst == 1'b0)", 'action': "we_o <= 1'b0;waddr_o <= 32'h0;data_o <= 32'h0;", 'block_path': ['4,1', '4,1,1']}, '4,1,0': {'condition': "!(rst == 1'b0)", 'action': "we_o <= 1'b0;waddr_o <= 32'h0;data_o <= 32'h0;", 'block_path': ['4,1', '4,1,0']}, '4,1,0,1': {'condition': "(csr_state) == 5'b00100", 'action': "we_o <= 1'b1;waddr_o <= {20'h0, 12'h341};data_o <= inst_addr;", 'block_path': ['4,1', '4,1,0', '4,1,0,1']}, '4,1,0,2': {'condition': "(csr_state) == 5'b10000", 'action': "we_o <= 1'b1;waddr_o <= {20'h0, 12'h342};data_o <= cause;", 'block_path': ['4,1', '4,1,0', '4,1,0,2']}, '4,1,0,3': {'condition': "(csr_state) == 5'b00010", 'action': "we_o <= 1'b1;waddr_o <= {20'h0, 12'h300};data_o <= {csr_mstatus[31:4], 1'b0, csr_mstatus[2:0]};", 'block_path': ['4,1', '4,1,0', '4,1,0,3']}, '4,1,0,4': {'condition': "(csr_state) == 5'b01000", 'action': "we_o <= 1'b1;waddr_o <= {20'h0, 12'h300};data_o <= {csr_mstatus[31:4], csr_mstatus[7], csr_mstatus[2:0]};", 'block_path': ['4,1', '4,1,0', '4,1,0,4']}, '4,1,0,5': {'condition': 'default', 'action': '', 'block_path': ['4,1', '4,1,0', '4,1,0,5']}}, {'5,1': {'condition': '', 'action': '', 'block_path': ['5,1']}, '5,1,1': {'condition': "(rst == 1'b0)", 'action': "int_assert_o <= 1'b0;int_addr_o <= 32'h0;", 'block_path': ['5,1', '5,1,1']}, '5,1,0': {'condition': "!(rst == 1'b0)", 'action': "int_assert_o <= 1'b0;int_addr_o <= 32'h0;", 'block_path': ['5,1', '5,1,0']}, '5,1,0,1': {'condition': "(csr_state) == 5'b10000", 'action': "int_assert_o <= 1'b1;int_addr_o <= csr_mtvec;", 'block_path': ['5,1', '5,1,0', '5,1,0,1']}, '5,1,0,2': {'condition': "(csr_state) == 5'b01000", 'action': "int_assert_o <= 1'b1;int_addr_o <= csr_mepc;", 'block_path': ['5,1', '5,1,0', '5,1,0,2']}, '5,1,0,3': {'condition': 'default', 'action': '', 'block_path': ['5,1', '5,1,0', '5,1,0,3']}}]
+list_CDFG = [{'0,0': {'condition': '', 'action': 'trigger = signal1 & signal2 & signal3;', 'block_path': ['0,0']}}, {'1,1': {'condition': '', 'action': '', 'block_path': ['1,1']}, '1,1,1': {'condition': "(rst) == 1'b1", 'action': "signal1 <= 1'b0;signal2 <= 1'b0;signal3 <= 1'b0;", 'block_path': ['1,1', '1,1,1']}, '1,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['1,1', '1,1,0']}, '1,1,0,1': {'condition': "(input_a == 32'h11223344)", 'action': "signal2 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,1']}, '1,1,0,0': {'condition': "!(input_a == 32'h11223344)", 'action': '', 'block_path': ['1,1', '1,1,0', '1,1,0,0']}, '1,1,0,0,1': {'condition': "(input_b == 32'h55667788 && signal1)", 'action': "signal3 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,1']}, '1,1,0,0,0': {'condition': "!(input_b == 32'h55667788 && signal1)", 'action': '', 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0']}, '1,1,0,0,0,1': {'condition': "(input_a == 32'h99AABBCC && input_b == 32'hDDCCEEFF && signal2)", 'action': "signal1 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0', '1,1,0,0,0,1']}, '1,1,0,0,0,0': {'condition': "!(input_a == 32'h99AABBCC && input_b == 32'hDDCCEEFF && signal2)", 'action': "signal1 <= 1'b0;signal2 <= 1'b0;signal3 <= 1'b0;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0', '1,1,0,0,0,0']}}, {'2,1': {'condition': '', 'action': 'ctr_1 <= ctr;', 'block_path': ['2,1']}}, {'3,1': {'condition': '', 'action': 'ctr_2 <= ctr_1;', 'block_path': ['3,1']}}, {'4,1': {'condition': '', 'action': '', 'block_path': ['4,1']}, '4,1,1': {'condition': "(rst) == 1'b1", 'action': "ht_out <= 32'b0;", 'block_path': ['4,1', '4,1,1']}, '4,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['4,1', '4,1,0']}, '4,1,0,1': {'condition': "(ctr_2 == 32'h12345678)", 'action': '', 'block_path': ['4,1', '4,1,0', '4,1,0,1']}, '4,1,0,1,1': {'condition': "(trigger == 1'b1)", 'action': "ht_out <= {ht_out[30:0], ht_out[31] ^ 1'b1};", 'block_path': ['4,1', '4,1,0', '4,1,0,1', '4,1,0,1,1']}, '4,1,0,1,0': {'condition': "!(trigger == 1'b1)", 'action': 'ht_out <= {ht_out[30:0], ht_out[31]};', 'block_path': ['4,1', '4,1,0', '4,1,0,1', '4,1,0,1,0']}, '4,1,0,0': {'condition': "!(ctr_2 == 32'h12345678)", 'action': 'ht_out <= ht_out;', 'block_path': ['4,1', '4,1,0', '4,1,0,0']}}]
 
 if __name__ == '__main__':
     # list_CDFG, list_inout = CDFG_1_1.main()
     signal_pattern = r'(?<!\')\b[a-zA-Z_]\w*\b'             # 匹配信号，但排除以单引号开头的数字常量
     constant_pattern = r"[0-9]?[0-9]?'\w[0-9A-Fa-f_]+'?"    # 匹配 Verilog 数字常量
-    # in_1 = BitVec('in_1', 8)
-    # clk = BitVec('clk', 1)
-    # rst = BitVec('rst', 1)
-    # out = BitVec('out', 8)
-    # state = BitVec('state', 4)
-    # st = BitVec('st', 4)
-    # st2 = BitVec('st2', 4)
 
-    # clk = BitVec('clk', 1)
-    # W_in = BitVec('W_in', 1)
-    # A_in = BitVec('A_in', 1)
-    # sensor = BitVec('sensor', 1)
-    # motor = BitVec('motor', 1)
-    # next_state = BitVec('next_state', 2)
-    # state = BitVec('state', 2)
-
-    # clint.v
+    # case3
     clk = BitVec('clk', 1)
     rst = BitVec('rst', 1)
-    inst_i = BitVec('inst_i', 32)
-    inst_addr_i = BitVec('inst_addr_i', 32)
-    jump_flag_i = BitVec('jump_flag_i', 1)
-    jump_addr_i = BitVec('jump_addr_i', 32)
-    div_started_i = BitVec('div_started_i', 1)
-    hold_flag_i = BitVec('hold_flag_i', 3)
-    data_i = BitVec('data_i', 32)
-    csr_mtvec = BitVec('csr_mtvec', 32)
-    csr_mepc = BitVec('csr_mepc', 32)
-    csr_mstatus = BitVec('csr_mstatus', 32)
-    global_int_en_i = BitVec('global_int_en_i', 1)
-    hold_flag_o = BitVec('hold_flag_o', 1)
-    we_o = BitVec('we_o', 1)
-    waddr_o = BitVec('waddr_o', 32)
-    raddr_o = BitVec('raddr_o', 32)
-    data_o = BitVec('data_o', 32)
-    int_addr_o = BitVec('int_addr_o', 32)
-    int_assert_o = BitVec('int_assert_o', 1)
-    inst_addr = BitVec('inst_addr', 32)
-    cause = BitVec('cause', 32)
-    int_state = BitVec('int_state', 4)
-    csr_state = BitVec('csr_state', 5)
+    input_a = BitVec('input_a', 32)
+    input_b = BitVec('input_b', 32)
+    ctr = BitVec('ctr', 32)
+    ctr_1 = BitVec('ctr', 32)
+    ctr_2 = BitVec('ctr', 32)
+    ht_out = BitVec('ht_out', 32)
+    signal1 = BitVec('signal1', 1)
+    signal2 = BitVec('signal1', 1)
+    signal3 = BitVec('signal1', 1)
+    trigger = BitVec('trigger', 1)
 
-    # csr_reg.v
-    # clk = BitVec('clk', 1)
+
+    # b10.v
+    # r_button = BitVec('r_button', 1)
+    # g_button = BitVec('g_button', 1)
+    # key = BitVec('key', 1)
+    # start = BitVec('start', 1)
+    # reset = BitVec('reset', 1)
+    # test = BitVec('test', 1)
+    # cts = BitVec('cts', 1)
+    # ctr = BitVec('ctr', 1)
+    # rts = BitVec('rts', 1)
+    # rtr = BitVec('rtr', 1)
+    # clock = BitVec('clock', 1)
+    # v_in = BitVec('v_in', 4)
+    # v_out = BitVec('v_out', 4)
+    # stato = BitVec('stato', 4)
+    # voto0 = BitVec('voto0', 1)
+    # voto1 = BitVec('voto1', 1)
+    # voto2 = BitVec('voto2', 1)
+    # voto3 = BitVec('voto3', 1)
+    # sign = BitVec('sign', 4)
+    # last_g = BitVec('last_g', 1)
+    # last_r = BitVec('last_r', 1)
+
+    # usb_phy.v
     # rst = BitVec('rst', 1)
-    # we_i = BitVec('we_i', 1)
-    # raddr_i = BitVec('raddr_i', 32)
-    # waddr_i = BitVec('waddr_i', 32)
-    # data_i = BitVec('data_i', 32)
-    # clint_we_i = BitVec('clint_we_i', 1)
-    # clint_raddr_i = BitVec('clint_raddr_i', 32)
-    # clint_waddr_i = BitVec('clint_waddr_i', 32)
-    # clint_data_i = BitVec('clint_data_i', 32)
-    # global_int_en_o = BitVec('global_int_en_o', 1)
-    # clint_data_o = BitVec('clint_data_o', 32)
-    # clint_csr_mtvec = BitVec('clint_csr_mtvec', 32)
-    # clint_csr_mepc = BitVec('clint_csr_mepc', 32)
-    # clint_csr_mstatus = BitVec('clint_csr_mstatus', 32)
-    # data_o = BitVec('data_o', 32)
-    # cycle = BitVec('cycle', 64)
-    # mtvec = BitVec('mtvec', 32)
-    # mcause = BitVec('mcause', 32)
-    # mepc = BitVec('mepc', 32)
-    # mie = BitVec('mie', 32)
-    # mstatus = BitVec('mstatus', 32)
-    # mscratch = BitVec('mscratch', 32)
-
-    # uart_top.v
-    # rec_dataH = BitVec('rec_dataH', 8)
-    # rec_dataH_temp = BitVec('rec_dataH_temp', 8)
-    # cntr = BitVec('cntr', 1)
-    # rec_dataH_rec = BitVec('rec_dataH_rec', 8)
-    # rec_readyH = BitVec('rec_readyH', 1)
-    # next_state_xmit = BitVec('next_state_xmit', 3)
-    # load_shiftRegH = BitVec('load_shiftRegH', 1)
-    # shiftEnaH = BitVec('shiftEnaH', 1)
-    # bitCell_cntrH = BitVec('bitCell_cntrH', 4)
-    # countEnaH = BitVec('countEnaH', 1)
-    # xmit_ShiftRegH = BitVec('xmit_ShiftRegH', 8)
-    # bitCountH = BitVec('bitCountH', 4)
-    # rst_bitCountH = BitVec('rst_bitCountH', 1)
-    # ena_bitCountH = BitVec('ena_bitCountH', 1)
-    # xmitDataSelH = BitVec('xmitDataSelH', 2)
-    # uart_xmitH = BitVec('uart_xmitH', 1)
-    # xmit_doneInH = BitVec('xmit_doneInH', 1)
-    # xmit_doneH = BitVec('xmit_doneH', 1)
-    # next_state_rec = BitVec('next_state_rec', 3)
-    # rec_datH = BitVec('rec_datH', 1)
-    # bitCell_cntrH_rec = BitVec('bitCell_cntrH_rec', 4)
-    # cntr_resetH = BitVec('cntr_resetH', 1)
-    # par_dataH = BitVec('par_dataH', 8)
-    # shiftH = BitVec('shiftH', 1)
-    # recd_bitCntrH = BitVec('recd_bitCntrH', 4)
-    # countH = BitVec('countH', 1)
-    # rstCountH = BitVec('rstCountH', 1)
-    # rec_readyInH = BitVec('rec_readyInH', 1)
-    # rec_dataH_1 = BitVec('rec_dataH_1', 8)
-    # uart_dataH = BitVec('uart_dataH', 1)
-    # xmit_dataH = BitVec('xmit_dataH', 8)
-    # rec_datSyncH = BitVec('rec_datSyncH', 1)
-    # uart_REC_dataH = BitVec('uart_REC_dataH', 1)
+    # phy_tx_mode = BitVec('phy_tx_mode', 1)
+    # usb_rst = BitVec('usb_rst', 1)
+    # txdp = BitVec('txdp', 1)
+    # txdn = BitVec('txdn', 1)
+    # txoe = BitVec('txoe', 1)
+    # rxd = BitVec('rxd', 1)
+    # rxdp = BitVec('rxdp', 1)
+    # rxdn = BitVec('rxdn', 1)
+    # DataOut_i = BitVec('DataOut_i', 8)
+    # TxValid_i = BitVec('TxValid_i', 1)
+    # TxReady_o = BitVec('TxReady_o', 1)
+    # RxValid_o = BitVec('RxValid_o', 1)
+    # RxActive_o = BitVec('RxActive_o', 1)
+    # RxError_o = BitVec('RxError_o', 1)
+    # DataIn_o = BitVec('DataIn_o', 8)
+    # LineState_o = BitVec('LineState_o', 2)
+    # rst_cnt = BitVec('rst_cnt', 5)
+    # i_tx_phy_TxReady_o = BitVec('i_tx_phy_TxReady_o', 1)
+    # i_tx_phy_state = BitVec('i_tx_phy_state', 3)
+    # i_tx_phy_next_state = BitVec('i_tx_phy_next_state', 3)
+    # i_tx_phy_tx_ready_d = BitVec('i_tx_phy_tx_ready_d', 1)
+    # i_tx_phy_ld_sop_d = BitVec('i_tx_phy_ld_sop_d', 1)
+    # i_tx_phy_ld_data_d = BitVec('i_tx_phy_ld_data_d', 1)
+    # i_tx_phy_ld_eop_d = BitVec('i_tx_phy_ld_eop_d', 1)
+    # i_tx_phy_tx_ip = BitVec('i_tx_phy_tx_ip', 1)
+    # i_tx_phy_tx_ip_sync = BitVec('i_tx_phy_tx_ip_sync', 1)
+    # i_tx_phy_bit_cnt = BitVec('i_tx_phy_bit_cnt', 3)
+    # i_tx_phy_hold_reg = BitVec('i_tx_phy_hold_reg', 8)
+    # i_tx_phy_hold_reg_d = BitVec('i_tx_phy_hold_reg_d', 8)
+    # i_tx_phy_sd_raw_o = BitVec('i_tx_phy_sd_raw_o', 1)
+    # i_tx_phy_data_done = BitVec('i_tx_phy_data_done', 1)
+    # i_tx_phy_sft_done = BitVec('i_tx_phy_sft_done', 1)
+    # i_tx_phy_sft_done_r = BitVec('i_tx_phy_sft_done_r', 1)
+    # i_tx_phy_ld_data = BitVec('i_tx_phy_ld_data', 1)
+    # i_tx_phy_one_cnt = BitVec('i_tx_phy_one_cnt', 3)
+    # i_tx_phy_stuff = BitVec('i_tx_phy_stuff', 1)
+    # i_tx_phy_sd_bs_o = BitVec('i_tx_phy_sd_bs_o', 1)
+    # i_tx_phy_sd_nrzi_o = BitVec('i_tx_phy_sd_nrzi_o', 1)
+    # i_tx_phy_append_eop = BitVec('i_tx_phy_append_eop', 1)
+    # i_tx_phy_append_eop_sync1 = BitVec('i_tx_phy_append_eop_sync1', 1)
+    # i_tx_phy_append_eop_sync2 = BitVec('i_tx_phy_append_eop_sync2', 1)
+    # i_tx_phy_append_eop_sync3 = BitVec('i_tx_phy_append_eop_sync3', 1)
+    # i_tx_phy_append_eop_sync4 = BitVec('i_tx_phy_append_eop_sync4', 1)
+    # i_tx_phy_txdp = BitVec('i_tx_phy_txdp', 1)
+    # i_tx_phy_txdn = BitVec('i_tx_phy_txdn', 1)
+    # i_tx_phy_txoe_r1 = BitVec('i_tx_phy_txoe_r1', 1)
+    # i_tx_phy_txoe_r2 = BitVec('i_tx_phy_txoe_r2', 1)
+    # i_tx_phy_txoe = BitVec('i_tx_phy_txoe', 1)
+    # i_rx_phy_rxd_s0 = BitVec('i_rx_phy_rxd_s0', 1)
+    # i_rx_phy_rxd_s1 = BitVec('i_rx_phy_rxd_s1', 1)
+    # i_rx_phy_rxd_s = BitVec('i_rx_phy_rxd_s', 1)
+    # i_rx_phy_rxdp_s0 = BitVec('i_rx_phy_rxdp_s0', 1)
+    # i_rx_phy_rxdp_s1 = BitVec('i_rx_phy_rxdp_s1', 1)
+    # i_rx_phy_rxdp_s = BitVec('i_rx_phy_rxdp_s', 1)
+    # i_rx_phy_rxdp_s_r = BitVec('i_rx_phy_rxdp_s_r', 1)
+    # i_rx_phy_rxdn_s0 = BitVec('i_rx_phy_rxdn_s0', 1)
+    # i_rx_phy_rxdn_s1 = BitVec('i_rx_phy_rxdn_s1', 1)
+    # i_rx_phy_rxdn_s = BitVec('i_rx_phy_rxdn_s', 1)
+    # i_rx_phy_rxdn_s_r = BitVec('i_rx_phy_rxdn_s_r', 1)
+    # i_rx_phy_synced_d = BitVec('i_rx_phy_synced_d', 1)
+    # i_rx_phy_rxd_r = BitVec('i_rx_phy_rxd_r', 1)
+    # i_rx_phy_rx_en = BitVec('i_rx_phy_rx_en', 1)
+    # i_rx_phy_rx_active = BitVec('i_rx_phy_rx_active', 1)
+    # i_rx_phy_bit_cnt = BitVec('i_rx_phy_bit_cnt', 3)
+    # i_rx_phy_rx_valid1 = BitVec('i_rx_phy_rx_valid1', 1)
+    # i_rx_phy_rx_valid = BitVec('i_rx_phy_rx_valid', 1)
+    # i_rx_phy_shift_en = BitVec('i_rx_phy_shift_en', 1)
+    # i_rx_phy_sd_r = BitVec('i_rx_phy_sd_r', 1)
+    # i_rx_phy_sd_nrzi = BitVec('i_rx_phy_sd_nrzi', 1)
+    # i_rx_phy_hold_reg = BitVec('i_rx_phy_hold_reg', 8)
+    # i_rx_phy_one_cnt = BitVec('i_rx_phy_one_cnt', 3)
+    # i_rx_phy_dpll_state = BitVec('i_rx_phy_dpll_state', 2)
+    # i_rx_phy_dpll_next_state = BitVec('i_rx_phy_dpll_next_state', 2)
+    # i_rx_phy_fs_ce_d = BitVec('i_rx_phy_fs_ce_d', 1)
+    # i_rx_phy_fs_ce = BitVec('i_rx_phy_fs_ce', 1)
+    # i_rx_phy_fs_state = BitVec('i_rx_phy_fs_state', 3)
+    # i_rx_phy_fs_next_state = BitVec('i_rx_phy_fs_next_state', 3)
+    # i_rx_phy_rx_valid_r = BitVec('i_rx_phy_rx_valid_r', 1)
+    # i_rx_phy_sync_err_d = BitVec('i_rx_phy_sync_err_d', 1)
+    # i_rx_phy_sync_err = BitVec('i_rx_phy_sync_err', 1)
+    # i_rx_phy_bit_stuff_err = BitVec('i_rx_phy_bit_stuff_err', 1)
+    # i_rx_phy_se0_r = BitVec('i_rx_phy_se0_r', 1)
+    # i_rx_phy_byte_err = BitVec('i_rx_phy_byte_err', 1)
+    # i_rx_phy_se0_s = BitVec('i_rx_phy_se0_s', 1)
+    # i_rx_phy_fs_ce_r1 = BitVec('i_rx_phy_fs_ce_r1', 1)
+    # i_rx_phy_fs_ce_r2 = BitVec('i_rx_phy_fs_ce_r2', 1)
     # 定义全局变量，用于体现路径约减的效果
     num_all = 0
     num_apt = 0
@@ -515,7 +576,7 @@ if __name__ == '__main__':
     constraint_stack = []
     flag = 0  # 用于控制路径搜索的回溯
 
-    target_node = '5,1,0,2'
+    target_node = '4,1,0,1,1'
     num_start = 0  # 起始优先级
     # 输入reset信号名
     # reset_name = input('请输入reset信号名：')

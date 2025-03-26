@@ -1,172 +1,254 @@
-from z3 import *
 import re
-import random
-##input: verilog path constraint stack, signal list [a,b] || condition, such as "a==b", action, such as "a <= 2'b0;"
-##output: Z3 solver constraint
-# import path_reduction
-
-
-# target_path_C, constraint_stack_list = path_reduction.main()
-# Verilog signal class for easy management
-# class VerilogSignal:
-#     def __init__(self, name, size):
-#         self.name = name
-#         self.size = size
-#         # self.var = BitVec(self.name, self.size)
-#         pass
-#     def Define_Vec(self):
-#         self.var = BitVec(self.name, self.size)
-
-# Parse Verilog condition (e.g., "a == b", "a <= b", "!(a == b)", "(a == 2'b0)&&(b > c)")
-def parse_condition(condition):
-    # initial output
-    condition = condition.strip()                   # 去除两端空格
-    condition_constraint = ""
-    signal_list_condition = []
-    signal_pattern = r'(?<!\')\b[a-zA-Z_]\w*\b'             # 匹配信号，但排除以单引号开头的数字常量
-    constant_pattern = r"[0-9]?[0-9]?'\w[0-9A-Fa-f_]+'?"    # 匹配 Verilog 数字常量
-    signals_in_condition = re.findall(signal_pattern, condition)
-    constants_list = re.findall(constant_pattern, condition)
-    signal_list_condition = signals_in_condition
-    pass
-    # Create Z3 constraints for condition
-    if condition.startswith('!'):
-        condition_new = condition[1:]
-        pass
-        return f"Not({parse_condition(condition_new)})"
-    elif condition.startswith('(') and condition.endswith(')'):
-        condition = condition[1:-1]
-        pass
-        return parse_condition(condition)
-    elif '||' in condition:
-        or_parts = condition.split("||")
-        if len(or_parts) > 1:
-            return f"Or({', '.join(parse_condition(part) for part in or_parts)})"
-    elif '&&' in condition:  
-        and_parts = condition.split("&&")
-        if len(and_parts) > 1:
-            pass
-            return f"And({', '.join(parse_condition(part) for part in and_parts)})"
-    elif '>' in condition or '>=' in condition:
-        if '>=' in condition:
-            uge_parts = condition.split(">=")
-            if len(uge_parts) > 1:
-                return f"UGE({', '.join(parse_condition(part) for part in uge_parts)})"
-        elif '>' in condition:
-            ugt_parts = condition.split(">")
-            if len(ugt_parts) > 1:
-                return f"UGT({', '.join(parse_condition(part) for part in ugt_parts)})"
-    elif '<' in condition or '<=' in condition:
-        if '<=' in condition:
-            ule_parts = condition.split("<=")
-            if len(ule_parts) > 1:
-                return f"ULE({', '.join(parse_condition(part) for part in ule_parts)})"
-        elif '<' in condition:
-            ult_parts = condition.split("<")
-            if len(ult_parts) > 1:
-                return f"ULT({', '.join(parse_condition(part) for part in ult_parts)})"
-    elif '==' in condition:
-        eq_parts = condition.split("==")
-        if len(eq_parts) > 1:
-            return f"{' == '.join(parse_condition(part) for part in eq_parts)}"
-    elif "'" in condition:
-        # 处理数字常量
-        # Check if condition is a signal or a constant
-        str_replace = condition
-        for signal_constant in constants_list:
-            if signal_constant in condition:
-                # Replace constant with a variable
-                if "'b" in signal_constant:
-                    lhs = signal_constant.split("'b")[0]
-                    rhs = signal_constant.split("'b")[1]
-                    pass
-                    data_width = int(lhs)    # 取出数据宽度,int类型
-                    data_value = int(rhs,2)    # 取出数据值,int类型
-                    str_replace = re.sub(signal_constant, f"BitVecVal({data_value}, {data_width})", str_replace)
-                if "'d" in signal_constant:
-                    data_width = int(signal_constant.split("'d")[0])    # 取出数据宽度,int类型
-                    data_value = int(signal_constant.split("'d")[1])    # 取出数据值,int类型
-                    str_replace = re.sub(signal_constant, f"BitVecVal({data_value}, {data_width})", str_replace)
-                if "'h" in signal_constant:
-                    data_width = int(signal_constant.split("'h")[0])    # 取出数据宽度,int类型
-                    data_value = int(signal_constant.split("'h")[1],16)    # 取出数据值,int类型
-                    str_replace = re.sub(signal_constant, f"BitVecVal({data_value}, {data_width})", str_replace)
-        return parse_condition(str_replace)
-    pass 
-    # 处理位拼接 `{a, b, c}`
-    concat_match = re.findall(r'\{([^}]+)\}', condition)
-    for concat_expr in concat_match:
-        concat_parts = [parse_condition(part.strip()) for part in concat_expr.split(',')]
-        condition = condition.replace(f'{{{concat_expr}}}', f"Concat({', '.join(concat_parts)})")    
-    # 处理位选 `a[7:0]` 和 `b[5]`
-    bit_select_match = re.findall(r'([a-zA-Z_]\w*)\[(\d+)(?::(\d+))?\]', condition)
-    for var, msb, lsb in bit_select_match:
-        if lsb is None:
-            condition = condition.replace(f'{var}[{msb}]', f'Extract({msb}, {msb}, {var})')
+from z3 import *
+def parse_verilog_const(const_str, in_comparison=False):
+    """
+    将 Verilog 常量转换为对应的表达式。
+    对于带宽度信息的常量（例如 2'd1、4'b1010、8'hFF）：
+      - 在比较上下文（in_comparison=True）下返回 BitVecVal 表达式，
+      - 否则，对于1位常量返回布尔 True/False，其它情况返回 BitVecVal 表达式。
+    """
+    const_str = const_str.strip()
+    # 匹配二进制常量，例如 1'b1 或 1'b0
+    m = re.match(r"^(\d+)'[bB]([01]+)$", const_str)
+    if m:
+        width, bits = m.groups()
+        if in_comparison:
+            return f"BitVecVal({int(bits, 2)}, {width})"
         else:
-            condition = condition.replace(f'{var}[{msb}:{lsb}]', f'Extract({msb}, {lsb}, {var})')
+            if width == "1":
+                return "True" if bits == "1" else "False"
+            else:
+                return f"BitVecVal({int(bits, 2)}, {width})"
+    # 匹配十进制常量，例如 2'd3
+    m = re.match(r"^(\d+)'[dD](\d+)$", const_str)
+    if m:
+        width, number = m.groups()
+        if in_comparison:
+            return f"BitVecVal({number}, {width})"
+        else:
+            if width == "1":
+                return "True" if number == "1" else "False"
+            else:
+                return f"BitVecVal({number}, {width})"
+    # 匹配十六进制常量，例如 8'hFF
+    m = re.match(r"^(\d+)'[hH]([0-9a-fA-F]+)$", const_str)
+    if m:
+        width, hex_num = m.groups()
+        if in_comparison:
+            return f"BitVecVal({int(hex_num, 16)}, {width})"
+        else:
+            if width == "1":
+                return "True" if int(hex_num, 16) == 1 else "False"
+            else:
+                return f"BitVecVal({int(hex_num, 16)}, {width})"
+    # 纯数字（无宽度信息）的情况
+    if const_str.isdigit():
+        if in_comparison:
+            return f"BitVecVal({const_str}, WIDTH)"  # WIDTH根据实际情况设定
+        else:
+            return "True" if const_str != "0" else "False"
+    return const_str
+
+def split_top_level(condition, op):
+    """
+    按 op 分割 condition，但只在顶层（括号深度为 0）分割。
+    如果能分割则返回子表达式列表，否则返回 None。
+    """
+    parts = []
+    depth = 0
+    last_index = 0
+    i = 0
+    op_len = len(op)
+    found = False
+    while i < len(condition):
+        c = condition[i]
+        if c == '(':
+            depth += 1
+        elif c == ')':
+            depth -= 1
+        # 仅在深度为0时查找 op
+        if depth == 0 and condition[i:i+op_len] == op:
+            parts.append(condition[last_index:i].strip())
+            last_index = i + op_len
+            i += op_len
+            found = True
+            continue
+        i += 1
+    if found:
+        parts.append(condition[last_index:].strip())
+        return parts
+    return None
+
+def parse_condition(condition, in_comparison=False):
+    """
+    递归解析 Verilog 条件表达式，生成适用于所有信号为 BitVec 的 Z3 约束字符串。
+    参数 in_comparison 用来指示当前解析是否处于比较上下文：
+      - True：裸变量和运算保留为位向量形式（不转换为布尔），
+      - False：裸变量转换为 (var != 0) 以得到布尔表达式。
+    """
+    condition = condition.strip()
+
+    # 如果整个表达式被外层括号包裹，则剥除之
+    if condition.startswith('(') and condition.endswith(')'):
+        depth = 0
+        remove = True
+        for i, c in enumerate(condition):
+            if c == '(':
+                depth += 1
+            elif c == ')':
+                depth -= 1
+                if depth == 0 and i < len(condition) - 1:
+                    remove = False
+                    break
+        if remove:
+            return parse_condition(condition[1:-1].strip(), in_comparison)
+    
+    # 先尝试顶层查找逻辑二元操作符（&&、||）
+    for op in ['&&', '||']:
+        parts = split_top_level(condition, op)
+        if parts is not None:
+            parsed_parts = [parse_condition(p, in_comparison=False) for p in parts]
+            if op == '&&':
+                return f"And({', '.join(parsed_parts)})"
+            else:
+                return f"Or({', '.join(parsed_parts)})"
+            
+    # 再查找顶层的按位运算符（&、|）
+    for op in ['&', '|']:
+        parts = split_top_level(condition, op)
+        if parts is not None:
+            parsed_parts = [parse_condition(p, in_comparison) for p in parts]
+            if in_comparison:
+                # 在比较上下文中保持位向量运算
+                join_op = f" {op} "
+                return "(" + join_op.join(parsed_parts) + ")"
+            else:
+                # 否则转换为逻辑运算
+                if op == '&':
+                    return f"And({', '.join(parsed_parts)})"
+                else:
+                    return f"Or({', '.join(parsed_parts)})"
+    
+    # 处理比较运算符（==, !=, >, <, >=, <=）
+    cmp_ops = [
+        ('>=', '>='),
+        ('<=', '<='),
+        ('>',  '>'),
+        ('<',  '<'),
+        ('==', '=='),
+        ('!=', '!=')
+    ]
+    for op_symbol, _ in cmp_ops:
+        parts = split_top_level(condition, op_symbol)
+        if parts is not None and len(parts) == 2:
+            lhs, rhs = parts
+            parsed_lhs = parse_condition(lhs.strip(), in_comparison=True)
+            parsed_rhs = parse_condition(rhs.strip(), in_comparison=True)
+            return f"({parsed_lhs} {op_symbol} {parsed_rhs})"
+    
+    # 处理逻辑非 ! 运算符
+    if condition.startswith('!'):
+        if in_comparison:
+            # 对于位向量，在比较上下文中，!X 按 Verilog 语义返回 1'b1 当 X==0，否则返回 1'b0
+            inner = parse_condition(condition[1:].strip(), in_comparison=True)
+            return f"If({inner} == 0, BitVecVal(1, 1), BitVecVal(0, 1))"
+        else:
+            inner = parse_condition(condition[1:].strip(), in_comparison=False)
+            return f"Not({inner})"
+    
+    # 处理按位非 ~ 运算符（直接保留为位向量运算）
+    if condition.startswith('~'):
+        inner = parse_condition(condition[1:].strip(), in_comparison=True)
+        return f"(~{inner})"
+    
+    # 处理归约操作符，如 |(...) 或 &(...)
+    if re.match(r'^[|&]\(.*\)$', condition):
+        op = condition[0]
+        m = re.search(r'\((.*)\)$', condition)
+        if m:
+            inner = parse_condition(m.group(1).strip(), in_comparison=False)
+            if op == '|':
+                return f"({inner} != 0)"
+            else:
+                return f"({inner} == BitVecVal((1 << {inner}.size()) - 1, {inner}.size()))"
+    
+    # 处理位选择，例如 a[3:0]
+    m = re.match(r'^(\w+)\[(\d+)(?::(\d+))?\]$', condition)
+    if m:
+        var, msb, lsb = m.groups()
+        if lsb is None:
+            return f"Extract({msb}, {msb}, {var})"
+        else:
+            return f"Extract({msb}, {lsb}, {var})"
+    
+    # 处理位拼接，例如 {a, b}
+    if condition.startswith('{'):
+        m = re.findall(r'\{([^}]+)\}', condition)
+        if m:
+            parts = m[0].split(',')
+            parsed_parts = [parse_condition(p.strip(), in_comparison=False) for p in parts]
+            return f"Concat({', '.join(parsed_parts)})"
+    
+    # # 处理按位运算符 & 和 |（非 && 和 ||）
+    # if '&' in condition and '&&' not in condition:
+    #     parts = [p.strip() for p in condition.split('&')]
+    #     parsed_parts = [parse_condition(p, in_comparison) for p in parts]
+    #     if in_comparison:
+    #         # 在比较上下文中保持位向量运算，直接用 & 连接
+    #         return "(" + " & ".join(parsed_parts) + ")"
+    #     else:
+    #         # 否则转换为逻辑 And（布尔表达式）
+    #         return f"And({', '.join(parsed_parts)})"
+    # if '|' in condition and '||' not in condition:
+    #     parts = [p.strip() for p in condition.split('|')]
+    #     parsed_parts = [parse_condition(p, in_comparison) for p in parts]
+    #     if in_comparison:
+    #         return "(" + " | ".join(parsed_parts) + ")"
+    #     else:
+    #         return f"Or({', '.join(parsed_parts)})"
+    
+    # 处理常量：纯数字或包含单引号的常量
+    if re.match(r'^\d+$', condition) or ("'" in condition):
+        return parse_verilog_const(condition, in_comparison)
+    
+    # 处理裸变量，例如 tagcomp_miss、state 等
+    if re.match(r'^[A-Za-z_]\w*$', condition):
+        if in_comparison:
+            return condition
+        else:
+            return f"({condition} != 0)"
+    
     return condition
 
+
 # Parse Verilog action (e.g., "a <= 2'b0; b <= c? 2'b1 : d;")
-def parse_action(action):          # action为字符串
-    # initial output
-    action = action.strip()                   # 去除两端空格
-    signal_pattern = r'(?<!\')\b[a-zA-Z_]\w*\b'             # 匹配信号，但排除以单引号开头的数字常量
-    constant_pattern = r"[0-9]?[0-9]?'\w[0-9A-Fa-f_]+'?"    # 匹配 Verilog 数字常量
-    signals_in_action = re.findall(signal_pattern, action)
-    constants_list = re.findall(constant_pattern, action)    # 动作语句中的数字常量列表
-    signal_list_action = signals_in_action                   # 动作语句中的相关信号列表
-    pass
-    # Create Z3 constraints for action
-    if '=' in action:
-        action = re.sub(r'<=|=', '==', action)
-        action_parts = action.split('==')
-        if len(action_parts) > 1:
-            return f"{' == '.join(parse_action(part) for part in action_parts)}"
-        pass
-    elif "'" in action:
-        # Check if action is a signal or a constant
-        str_replace = action
-        for signal_constant in constants_list:
-            if signal_constant in action:
-                # Replace constant with a variable
-                if "'b" in signal_constant:
-                    lhs = signal_constant.split("'b")[0]
-                    rhs = signal_constant.split("'b")[1]
-                    pass
-                    data_width = int(lhs)    # 取出数据宽度,int类型
-                    data_value = int(rhs,2)    # 取出数据值,int类型
-                    str_replace = re.sub(signal_constant, f"BitVecVal({data_value}, {data_width})", str_replace)
-                if "'d" in signal_constant:
-                    data_width = int(signal_constant.split("'d")[0])    # 取出数据宽度,int类型
-                    data_value = int(signal_constant.split("'d")[1])    # 取出数据值,int类型
-                    str_replace = re.sub(signal_constant, f"BitVecVal({data_value}, {data_width})", str_replace)
-                if "'h" in signal_constant:
-                    data_width = int(signal_constant.split("'h")[0])    # 取出数据宽度,int类型
-                    data_value = int(signal_constant.split("'h")[1],16)    # 取出数据值,int类型
-                    str_replace = re.sub(signal_constant, f"BitVecVal({data_value}, {data_width})", str_replace)
-        return parse_action(str_replace)
-    pass
-    # 处理位拼接 `{a, b, c}`
-    concat_match = re.findall(r'\{([^}]+)\}', action)
-    for concat_expr in concat_match:
-        concat_parts = [parse_action(part.strip()) for part in concat_expr.split(',')]
-        action = action.replace(f'{{{concat_expr}}}', f"Concat({', '.join(concat_parts)})")    
-    # 处理位选 `a[7:0]` 和 `b[5]`
-    bit_select_match = re.findall(r'([a-zA-Z_]\w*)\[(\d+)(?::(\d+))?\]', action)
-    for var, msb, lsb in bit_select_match:
-        if lsb is None:
-            action = action.replace(f'{var}[{msb}]', f'Extract({msb}, {msb}, {var})')
-        else:
-            action = action.replace(f'{var}[{msb}:{lsb}]', f'Extract({msb}, {lsb}, {var})')
-    return action
+def parse_action(assignment):
+    """
+    解析 Verilog 赋值语句（非阻塞和阻塞赋值），转换为 Z3 约束。
+    示例输入:  'i_rx_phy_se0_s <= (!(i_rx_phy_rxdp_s) & !(i_rx_phy_rxdn_s));'
+    示例输出:  'i_rx_phy_se0_s == And(Not(i_rx_phy_rxdp_s), Not(i_rx_phy_rxdn_s))'
+    """
+    assignment = assignment.strip().rstrip(';')  # 去除两端空格和末尾的 `;`
+    
+    # 使用正则匹配变量、赋值运算符（<= 或 =）和表达式
+    match = re.match(r"(\w+)\s*(<=|=)\s*(.*)", assignment)
+    if not match:
+        raise ValueError("无效的 Verilog 赋值语句格式: " + assignment)
+    
+    lhs, op, rhs = match.groups()  # 提取左侧变量、赋值运算符和右侧表达式
+    
+    # 右侧表达式解析
+    parsed_rhs = parse_condition(rhs, in_comparison=True)  # 解析右侧表达式
+    
+    # 赋值转换为 Z3 等式约束
+    return f"{lhs} == {parsed_rhs}"
 
 # Main function to convert Verilog constraints to Z3 constraints
 def verilog_to_z3(constraint_stack, signals_inout, signals_midle):      
 #signals_inout, signals_midle are dictionaries of VerilogSignal objects
     z3_constraints = []
     list_signals_inconstraint = []
-
+    pass
     while constraint_stack:
         pass
         constraint_pop = constraint_stack.pop()
@@ -177,12 +259,31 @@ def verilog_to_z3(constraint_stack, signals_inout, signals_midle):
             z3_constraints.append(condition_constraint)
             # list_signals_inconstraint.extend(signal_list_condition)
         elif (';' in constraint_pop): # Determine action statement
+            left_match = re.match(
+                r"^\s*(\w+)\s*(?:$$.*?$$)?\s*(?:=|<=)\s*", 
+                constraint_pop.split(';')[0]  # 移除可能干扰的结尾分号
+            )
+            if not left_match:
+                return False
+            left_signal = left_match.group(1)
+
+            # 阶段2：精准分割右侧表达式（兼容所有赋值类型）
+            if '<=' in constraint_pop:
+                right_segment = constraint_pop.split('<=', 1)[-1].split(';')[0]
+            else:
+                right_segment = constraint_pop.split('=', 1)[-1].split(';')[0]
+
+            # if left_signal in right_segment: # 需要完整匹配一个单词，而非简单的包含关系
+            if re.search(r'\b{}\b'.format(re.escape(left_signal)), right_segment):
+                z3_constraints = []
+                return list_signals_inconstraint, z3_constraints
+            else:
             # Parse action
-            constraint_pop_list = constraint_pop.split(';')[:-1]
-            for action_part in constraint_pop_list:
-                action_constraint = parse_action(action_part)
-                z3_constraints.append(action_constraint)
-                # list_signals_inconstraint.extend(signal_list_action)
+                constraint_pop_list = constraint_pop.split(';')[:-1]
+                for action_part in constraint_pop_list:
+                    action_constraint = parse_action(action_part)
+                    z3_constraints.append(action_constraint)
+                    # list_signals_inconstraint.extend(signal_list_action)
 
     # delete duplicate signals
     # list_signals_inconstraint = list(set(list_signals_inconstraint))
@@ -200,9 +301,14 @@ def main_z3_solver(constraint_stack, signal_inout, signal_midle):
     signal_list, constraints = verilog_to_z3(constraint_stack, signal_inout, signal_midle)
 
     # Create Z3 solver and add constraints
+    pass
     solver = Solver()
+    # solver.add(eval("'And((!ic_en), (hitmiss_eval & !icqmem_cycstb_i), (biudata_error), (cache_inhibit & biudata_valid))'"))
+    # solver.add(Not(Or((ic_en == 0), (hitmiss_eval & (icqmem_cycstb_i == 0)) != 0, (biudata_error != 0), (cache_inhibit & biudata_valid) != 0)))
     for constraint in constraints:
         solver.add(eval(constraint))
+
+
 
     # Check if constraints are satisfiable
     if solver.check() == sat:
@@ -224,21 +330,96 @@ def main_z3_solver(constraint_stack, signal_inout, signal_midle):
 
 # Example usage
 # constraint_stack1 = ["r_in == 6'b101010", "a <= r_in;", "b < a & 6'b100100", "b <= 6'b100110"]
-# constraint_stack2 = ["(in_1 == 8'h6e && state == 4'h2)", "state <= {in_2[2:0], 1'b0}"]
-# # Define Z3 BitVec variables for each signal
-# # r_in = BitVec('r_in', 6)
-# # a = BitVec('a', 6)
-# # b = BitVec('b', 6)
-# # signal_inout = {'r_in': [r_in, 6], 'a': [a, 6], 'b': [b, 6]}
-# # print(parse_action(constraint_stack2[1]))
-# in_2 = BitVec('in_2', 3)
-# in_1 = BitVec('in_1', 8)
-# clk = BitVec('clk', 1)
+# constraint_stack2 = ["(!(i_rx_phy_rxdp_s) & i_rx_phy_rxdn_s) && i_rx_phy_rx_en", "i_rx_phy_rxdp_s <= (i_rx_phy_rxdp_s0 | i_rx_phy_rxdp_s1 | i_rx_phy_rxdp_s_r);"]
+
+
 # rst = BitVec('rst', 1)
-# out = BitVec('out', 8)
-# state = BitVec('state', 4)
-# st = BitVec('st', 4)
-# st2 = BitVec('st2', 4)
+# phy_tx_mode = BitVec('phy_tx_mode', 1)
+# usb_rst = BitVec('usb_rst', 1)
+# txdp = BitVec('txdp', 1)
+# txdn = BitVec('txdn', 1)
+# txoe = BitVec('txoe', 1)
+# rxd = BitVec('rxd', 1)
+# rxdp = BitVec('rxdp', 1)
+# rxdn = BitVec('rxdn', 1)
+# DataOut_i = BitVec('DataOut_i', 8)
+# TxValid_i = BitVec('TxValid_i', 1)
+# TxReady_o = BitVec('TxReady_o', 1)
+# RxValid_o = BitVec('RxValid_o', 1)
+# RxActive_o = BitVec('RxActive_o', 1)
+# RxError_o = BitVec('RxError_o', 1)
+# DataIn_o = BitVec('DataIn_o', 8)
+# LineState_o = BitVec('LineState_o', 2)
+# rst_cnt = BitVec('rst_cnt', 5)
+# i_tx_phy_TxReady_o = BitVec('i_tx_phy_TxReady_o', 1)
+# i_tx_phy_state = BitVec('i_tx_phy_state', 3)
+# i_tx_phy_next_state = BitVec('i_tx_phy_next_state', 3)
+# i_tx_phy_tx_ready_d = BitVec('i_tx_phy_tx_ready_d', 1)
+# i_tx_phy_ld_sop_d = BitVec('i_tx_phy_ld_sop_d', 1)
+# i_tx_phy_ld_data_d = BitVec('i_tx_phy_ld_data_d', 1)
+# i_tx_phy_ld_eop_d = BitVec('i_tx_phy_ld_eop_d', 1)
+# i_tx_phy_tx_ip = BitVec('i_tx_phy_tx_ip', 1)
+# i_tx_phy_tx_ip_sync = BitVec('i_tx_phy_tx_ip_sync', 1)
+# i_tx_phy_bit_cnt = BitVec('i_tx_phy_bit_cnt', 3)
+# i_tx_phy_hold_reg = BitVec('i_tx_phy_hold_reg', 8)
+# i_tx_phy_hold_reg_d = BitVec('i_tx_phy_hold_reg_d', 8)
+# i_tx_phy_sd_raw_o = BitVec('i_tx_phy_sd_raw_o', 1)
+# i_tx_phy_data_done = BitVec('i_tx_phy_data_done', 1)
+# i_tx_phy_sft_done = BitVec('i_tx_phy_sft_done', 1)
+# i_tx_phy_sft_done_r = BitVec('i_tx_phy_sft_done_r', 1)
+# i_tx_phy_ld_data = BitVec('i_tx_phy_ld_data', 1)
+# i_tx_phy_one_cnt = BitVec('i_tx_phy_one_cnt', 3)
+# i_tx_phy_stuff = BitVec('i_tx_phy_stuff', 1)
+# i_tx_phy_sd_bs_o = BitVec('i_tx_phy_sd_bs_o', 1)
+# i_tx_phy_sd_nrzi_o = BitVec('i_tx_phy_sd_nrzi_o', 1)
+# i_tx_phy_append_eop = BitVec('i_tx_phy_append_eop', 1)
+# i_tx_phy_append_eop_sync1 = BitVec('i_tx_phy_append_eop_sync1', 1)
+# i_tx_phy_append_eop_sync2 = BitVec('i_tx_phy_append_eop_sync2', 1)
+# i_tx_phy_append_eop_sync3 = BitVec('i_tx_phy_append_eop_sync3', 1)
+# i_tx_phy_append_eop_sync4 = BitVec('i_tx_phy_append_eop_sync4', 1)
+# i_tx_phy_txdp = BitVec('i_tx_phy_txdp', 1)
+# i_tx_phy_txdn = BitVec('i_tx_phy_txdn', 1)
+# i_tx_phy_txoe_r1 = BitVec('i_tx_phy_txoe_r1', 1)
+# i_tx_phy_txoe_r2 = BitVec('i_tx_phy_txoe_r2', 1)
+# i_tx_phy_txoe = BitVec('i_tx_phy_txoe', 1)
+# i_rx_phy_rxd_s0 = BitVec('i_rx_phy_rxd_s0', 1)
+# i_rx_phy_rxd_s1 = BitVec('i_rx_phy_rxd_s1', 1)
+# i_rx_phy_rxd_s = BitVec('i_rx_phy_rxd_s', 1)
+# i_rx_phy_rxdp_s0 = BitVec('i_rx_phy_rxdp_s0', 1)
+# i_rx_phy_rxdp_s1 = BitVec('i_rx_phy_rxdp_s1', 1)
+# i_rx_phy_rxdp_s = BitVec('i_rx_phy_rxdp_s', 1)
+# i_rx_phy_rxdp_s_r = BitVec('i_rx_phy_rxdp_s_r', 1)
+# i_rx_phy_rxdn_s0 = BitVec('i_rx_phy_rxdn_s0', 1)
+# i_rx_phy_rxdn_s1 = BitVec('i_rx_phy_rxdn_s1', 1)
+# i_rx_phy_rxdn_s = BitVec('i_rx_phy_rxdn_s', 1)
+# i_rx_phy_rxdn_s_r = BitVec('i_rx_phy_rxdn_s_r', 1)
+# i_rx_phy_synced_d = BitVec('i_rx_phy_synced_d', 1)
+# i_rx_phy_rxd_r = BitVec('i_rx_phy_rxd_r', 1)
+# i_rx_phy_rx_en = BitVec('i_rx_phy_rx_en', 1)
+# i_rx_phy_rx_active = BitVec('i_rx_phy_rx_active', 1)
+# i_rx_phy_bit_cnt = BitVec('i_rx_phy_bit_cnt', 3)
+# i_rx_phy_rx_valid1 = BitVec('i_rx_phy_rx_valid1', 1)
+# i_rx_phy_rx_valid = BitVec('i_rx_phy_rx_valid', 1)
+# i_rx_phy_shift_en = BitVec('i_rx_phy_shift_en', 1)
+# i_rx_phy_sd_r = BitVec('i_rx_phy_sd_r', 1)
+# i_rx_phy_sd_nrzi = BitVec('i_rx_phy_sd_nrzi', 1)
+# i_rx_phy_hold_reg = BitVec('i_rx_phy_hold_reg', 8)
+# i_rx_phy_one_cnt = BitVec('i_rx_phy_one_cnt', 3)
+# i_rx_phy_dpll_state = BitVec('i_rx_phy_dpll_state', 2)
+# i_rx_phy_dpll_next_state = BitVec('i_rx_phy_dpll_next_state', 2)
+# i_rx_phy_fs_ce_d = BitVec('i_rx_phy_fs_ce_d', 1)
+# i_rx_phy_fs_ce = BitVec('i_rx_phy_fs_ce', 1)
+# i_rx_phy_fs_state = BitVec('i_rx_phy_fs_state', 3)
+# i_rx_phy_fs_next_state = BitVec('i_rx_phy_fs_next_state', 3)
+# i_rx_phy_rx_valid_r = BitVec('i_rx_phy_rx_valid_r', 1)
+# i_rx_phy_sync_err_d = BitVec('i_rx_phy_sync_err_d', 1)
+# i_rx_phy_sync_err = BitVec('i_rx_phy_sync_err', 1)
+# i_rx_phy_bit_stuff_err = BitVec('i_rx_phy_bit_stuff_err', 1)
+# i_rx_phy_se0_r = BitVec('i_rx_phy_se0_r', 1)
+# i_rx_phy_byte_err = BitVec('i_rx_phy_byte_err', 1)
+# i_rx_phy_se0_s = BitVec('i_rx_phy_se0_s', 1)
+# i_rx_phy_fs_ce_r1 = BitVec('i_rx_phy_fs_ce_r1', 1)
+# i_rx_phy_fs_ce_r2 = BitVec('i_rx_phy_fs_ce_r2', 1)
 
 # main_z3_solver(constraint_stack2, {}, {})
 

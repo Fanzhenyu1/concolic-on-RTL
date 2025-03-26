@@ -1,0 +1,34 @@
+list_CDFG = [{'0,0': {'condition': '', 'action': 'icram_we = {4{biu_read & biudata_valid & !cache_inhibit}};', 'block_path': ['0,0']}}, {'1,0': {'condition': '', 'action': 'tag_we = biu_read & biudata_valid & !cache_inhibit;', 'block_path': ['1,0']}}, {'2,0': {'condition': '', 'action': 'biu_read = (hitmiss_eval & tagcomp_miss) | (!hitmiss_eval & load);', 'block_path': ['2,0']}}, {'3,0': {'condition': '', 'action': 'saved_addr = saved_addr_r;', 'block_path': ['3,0']}}, {'4,0': {'condition': '', 'action': "first_hit_ack = (state == 2'd1) & hitmiss_eval & !tagcomp_miss & !cache_inhibit;", 'block_path': ['4,0']}}, {'5,0': {'condition': '', 'action': "first_miss_ack = (state == 2'd1) & biudata_valid & ~first_hit_ack;", 'block_path': ['5,0']}}, {'6,0': {'condition': '', 'action': "first_miss_err = (state == 2'd1) & biudata_error;", 'block_path': ['6,0']}}, {'7,0': {'condition': '', 'action': "burst = (state == 2'd1) & tagcomp_miss & !cache_inhibit | (state == 2'd2);", 'block_path': ['7,0']}}, 
+{'8,1': {'condition': '', 'action': '', 'block_path': ['8,1']}, '8,1,1': {'condition': "(rst == (1'b1))", 'action': "state <= 2'd0;saved_addr_r <= 32'b0;hitmiss_eval <= 1'b0;load <= 1'b0;cnt <= 4'd0;last_eval_miss <= 0;", 'block_path': ['8,1', '8,1,1']}, '8,1,0': {'condition': "!(rst == (1'b1))", 'action': '', 'block_path': ['8,1', '8,1,0']}, '8,1,0,1': {'condition': "(state) == 2'd0", 'action': '', 'block_path': ['8,1', '8,1,0', '8,1,0,1']}, '8,1,0,1,1': {'condition': "(ic_en & icqmem_cycstb_i) == 1'b1", 'action': "state <= 2'd1;saved_addr_r <= start_addr;hitmiss_eval <= 1'b1;load <= 1'b1;cache_inhibit <= icqmem_ci_i;last_eval_miss <= 0;", 'block_path': ['8,1', '8,1,0', '8,1,0,1', '8,1,0,1,1']}, '8,1,0,1,0': {'condition': "!(ic_en & icqmem_cycstb_i) == 1'b1", 'action': "hitmiss_eval <= 1'b0;load <= 1'b0;cache_inhibit <= 1'b0;", 'block_path': ['8,1', '8,1,0', '8,1,0,1', '8,1,0,1,0']}, 
+    '8,1,0,2': {'condition': "(state) == 2'd1", 'action': 'temp_addr = saved_addr_r;', 'block_path': ['8,1', '8,1,0', '8,1,0,2']}, 
+        '8,1,0,2,1': {'condition': "(icqmem_cycstb_i & icqmem_ci_i) == 1'b1", 'action': "cache_inhibit <= 1'b1;", 'block_path': ['8,1', '8,1,0', '8,1,0,2', '8,1,0,2,1']}, 
+        '8,1,0,2,1,1': {'condition': "(hitmiss_eval) == 1'b1", 'action': 'temp_addr = {start_addr[31:13], temp_addr[12:0]};', 'block_path': ['8,1', '8,1,0', '8,1,0,2', '8,1,0,2,1,1']}, 
+        '8,1,0,2,1,1,1': {'condition': '((!ic_en) || (hitmiss_eval & !icqmem_cycstb_i) || (biudata_error) || (cache_inhibit & biudata_valid))', 'action': "state <= 2'd0;hitmiss_eval <= 1'b0;load <= 1'b0;cache_inhibit <= 1'b0;", 'block_path': ['8,1', '8,1,0', '8,1,0,2', '8,1,0,2,1,1,1']}, '8,1,0,2,1,1,0': {'condition': "(!ic_en) && (hitmiss_eval & !icqmem_cycstb_i) && (biudata_error) && (cache_inhibit & biudata_valid)", 'action': '', 'block_path': ['8,1', '8,1,0', '8,1,0,2', '8,1,0,2,1,1,0']}, '8,1,0,2,1,1,0,1': {'condition': "(tagcomp_miss & biudata_valid) == 1'b1", 'action': "state <= 2'd2;temp_addr = {temp_addr[31:4], saved_addr_r[3:2] + 2'b1, temp_addr[1:0]};hitmiss_eval <= 1'b0;cnt <= ((1 << 4) - (2 * 4));cache_inhibit <= 1'b0;", 'block_path': ['8,1', '8,1,0', '8,1,0,2', '8,1,0,2,1,1,0', '8,1,0,2,1,1,0,1']}, '8,1,0,2,1,1,0,0': {'condition': "!(tagcomp_miss & biudata_valid) == 1'b1", 'action': '', 'block_path': ['8,1', '8,1,0', '8,1,0,2', '8,1,0,2,1,1,0', '8,1,0,2,1,1,0,0']}, '8,1,0,2,1,1,0,0,1': {'condition': "(!icqmem_cycstb_i && !last_eval_miss)", 'action': "state <= 2'd0;hitmiss_eval <= 1'b0;load <= 1'b0;cache_inhibit <= 1'b0;", 'block_path': ['8,1', '8,1,0', '8,1,0,2', '8,1,0,2,1,1,0', '8,1,0,2,1,1,0,0', '8,1,0,2,1,1,0,0,1']}, '8,1,0,2,1,1,0,0,0': {'condition': "!(!icqmem_cycstb_i && !last_eval_miss)", 'action': '', 'block_path': ['8,1', '8,1,0', '8,1,0,2', '8,1,0,2,1,1,0', '8,1,0,2,1,1,0,0', '8,1,0,2,1,1,0,0,0']}, '8,1,0,2,1,1,0,0,0,1': {'condition': "(!tagcomp_miss & !icqmem_ci_i) == 1'b1", 'action': "temp_addr = start_addr;cache_inhibit <= 1'b0;", 'block_path': ['8,1', '8,1,0', '8,1,0,2', '8,1,0,2,1,1,0', '8,1,0,2,1,1,0,0', '8,1,0,2,1,1,0,0,0', '8,1,0,2,1,1,0,0,0,1']}, '8,1,0,2,1,1,0,0,0,0': {'condition': "!(!tagcomp_miss & !icqmem_ci_i) == 1'b1", 'action': "hitmiss_eval <= 1'b0;", 'block_path': ['8,1', '8,1,0', '8,1,0,2', '8,1,0,2,1,1,0', '8,1,0,2,1,1,0,0', '8,1,0,2,1,1,0,0,0', '8,1,0,2,1,1,0,0,0,0']}, '8,1,0,2,1,1,0,0,0,0,1': {'condition': "(hitmiss_eval & !tagcomp_miss) == 1'b1", 'action': 'last_eval_miss <= 1;saved_addr_r <= temp_addr;', 'block_path': ['8,1', '8,1,0', '8,1,0,2', '8,1,0,2,1,1,0,0,0,0,1']}, 
+    '8,1,0,3': {'condition': "(state) == 2'd2", 'action': '', 'block_path': ['8,1', '8,1,0', '8,1,0,3']}, '8,1,0,3,1': {'condition': "(!ic_en) == 1'b1", 'action': "state <= 2'd0;saved_addr_r <= start_addr;hitmiss_eval <= 1'b0;load <= 1'b0;", 'block_path': ['8,1', '8,1,0', '8,1,0,3', '8,1,0,3,1']}, '8,1,0,3,0': {'condition': "!(!ic_en) == 1'b1", 'action': '', 'block_path': ['8,1', '8,1,0', '8,1,0,3', '8,1,0,3,0']}, '8,1,0,3,0,1': {'condition': '(biudata_valid && (|cnt))', 'action': "cnt <= cnt - 4'd4;saved_addr_r <= {saved_addr_r[31:4], saved_addr_r[4-1:2] + 2'b1, saved_addr_r[1:0]};", 'block_path': ['8,1', '8,1,0', '8,1,0,3', '8,1,0,3,0', '8,1,0,3,0,1']}, '8,1,0,3,0,0': {'condition': '!(biudata_valid && (|cnt))', 'action': '', 'block_path': ['8,1', '8,1,0', '8,1,0,3', '8,1,0,3,0', '8,1,0,3,0,0']}, '8,1,0,3,0,0,1': {'condition': "(biudata_valid) == 1'b1", 'action': "state <= 2'd0;saved_addr_r <= start_addr;hitmiss_eval <= 1'b0;load <= 1'b0;", 'block_path': ['8,1', '8,1,0', '8,1,0,3', '8,1,0,3,0', '8,1,0,3,0,0', '8,1,0,3,0,0,1']}, 
+    '8,1,0,4': {'condition': 'default', 'action': "state <= 2'd0;", 'block_path': ['8,1', '8,1,0', '8,1,0,4']}}]
+
+    rst = BitVec('rst', 1)
+    ic_en = BitVec('ic_en', 1)
+    icqmem_cycstb_i = BitVec('icqmem_cycstb_i', 1)
+    icqmem_ci_i = BitVec('icqmem_ci_i', 1)
+    tagcomp_miss = BitVec('tagcomp_miss', 1)
+    biudata_valid = BitVec('biudata_valid', 1)
+    biudata_error = BitVec('biudata_error', 1)
+    start_addr = BitVec('start_addr', 32)
+    saved_addr = BitVec('saved_addr', 32)
+    icram_we = BitVec('icram_we', 4)
+    biu_read = BitVec('biu_read', 1)
+    first_hit_ack = BitVec('first_hit_ack', 1)
+    first_miss_ack = BitVec('first_miss_ack', 1)
+    first_miss_err = BitVec('first_miss_err', 1)
+    burst = BitVec('burst', 1)
+    tag_we = BitVec('tag_we', 1)
+    state = BitVec('state', 2)
+    cnt = BitVec('cnt', 4)
+    saved_addr_r = BitVec('saved_addr_r', 32)
+    hitmiss_eval = BitVec('hitmiss_eval', 1)
+    load = BitVec('load', 1)
+    cache_inhibit = BitVec('cache_inhibit', 1)
+    last_eval_miss = BitVec('last_eval_miss', 1)
+    temp_addr = BitVec('temp_addr', 32)
+    

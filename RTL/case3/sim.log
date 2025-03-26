@@ -1,0 +1,115 @@
+VCD info: dumpfile wave.vcd opened for output.
+achieve node: 4,1
+achieve node: 4,1,1
+achieve node: 3,1
+achieve node: 2,1
+achieve node: 1,1
+achieve node: 1,1,1
+********Period           0********
+achieve node: 1,1
+achieve node: 1,1,1
+achieve node: 2,1
+achieve node: 3,1
+achieve node: 4,1
+achieve node: 4,1,1
+********Period           1********
+achieve node: 4,1
+achieve node: 4,1,0,0
+achieve node: 3,1
+achieve node: 2,1
+achieve node: 1,1
+achieve node: 1,1,0,0,0,0
+********Period           2********
+achieve node: 1,1
+achieve node: 1,1,0,0,0,0
+achieve node: 2,1
+achieve node: 3,1
+achieve node: 4,1
+achieve node: 4,1,0,0
+********Period           3********
+achieve node: 4,1
+achieve node: 4,1,0,0
+achieve node: 3,1
+achieve node: 2,1
+achieve node: 1,1
+achieve node: 1,1,0,0,0,0
+********Period           4********
+achieve node: 1,1
+achieve node: 1,1,0,0,0,0
+achieve node: 2,1
+achieve node: 3,1
+achieve node: 4,1
+achieve node: 4,1,0,0
+********Period           5********
+achieve node: 4,1
+achieve node: 4,1,0,0
+achieve node: 3,1
+achieve node: 2,1
+achieve node: 1,1
+achieve node: 1,1,0,0,0,0
+********Period           6********
+achieve node: 1,1
+achieve node: 1,1,0,0,0,0
+achieve node: 2,1
+achieve node: 3,1
+achieve node: 4,1
+achieve node: 4,1,0,0
+********Period           7********
+achieve node: 4,1
+achieve node: 4,1,0,0
+achieve node: 3,1
+achieve node: 2,1
+achieve node: 1,1
+achieve node: 1,1,0,0,0,0
+********Period           8********
+achieve node: 1,1
+achieve node: 1,1,0,0,0,0
+achieve node: 2,1
+achieve node: 3,1
+achieve node: 4,1
+achieve node: 4,1,0,0
+********Period           9********
+achieve node: 4,1
+achieve node: 4,1,0,0
+achieve node: 3,1
+achieve node: 2,1
+achieve node: 1,1
+achieve node: 1,1,0,0,0,0
+achieve node: 1,1
+achieve node: 1,1,0,1
+achieve node: 2,1
+achieve node: 3,1
+achieve node: 4,1
+achieve node: 4,1,0,0
+achieve node: 4,1
+achieve node: 4,1,0,0
+achieve node: 3,1
+achieve node: 2,1
+achieve node: 1,1
+achieve node: 1,1,0,0,0,1
+achieve node: 1,1
+achieve node: 1,1,0,0,1
+achieve node: 2,1
+achieve node: 3,1
+achieve node: 4,1
+achieve node: 4,1,0,0
+achieve node: 4,1
+achieve node: 4,1,0,1
+achieve node: 4,1,0,1,1
+achieve node: 3,1
+achieve node: 2,1
+achieve node: 1,1
+achieve node: 1,1,0,0,0,0
+achieve node: 1,1
+achieve node: 1,1,0,0,0,0
+achieve node: 2,1
+achieve node: 3,1
+achieve node: 4,1
+achieve node: 4,1,0,0
+achieve node: 4,1
+achieve node: 4,1,0,0
+achieve node: 3,1
+achieve node: 2,1
+achieve node: 1,1
+achieve node: 1,1,0,0,0,0
+d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case3/case3_tb.v:79: $finish called at 170000 (1ps)

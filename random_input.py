@@ -62,7 +62,7 @@ def generate_random_stimulus(inputs, num_cycles=100):
         code_lines.append(f"    {signal} = 0;")
     code_lines.append("    #10;")
     code_lines.append(f"    for(i = 0; i < {num_cycles}; i = i + 1) begin")
-    code_lines.append("        #8;")
+    code_lines.append("        $display(\"********Period %d********\", i);")
     for signal, width in inputs:
         if width >= 32:
             # $random 返回32位数
@@ -70,17 +70,24 @@ def generate_random_stimulus(inputs, num_cycles=100):
         else:
             mask = (1 << width) - 1
             code_lines.append(f"        {signal} = $random & {width}'d{mask};")
-    code_lines.append("        #2;")
+    code_lines.append("        #10;")
     code_lines.append("    end")
+    code_lines.append("    $finish;")
+    code_lines.append("end")
+    code_lines.append("initial begin")
+    code_lines.append("    $dumpfile(\"wave.vcd\");")
+    code_lines.append("    $dumpvars(0, tb_***);")
     code_lines.append("end")
     return "\n".join(code_lines)
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python script.py <verilog_module_file>")
-        sys.exit(1)
+    # if len(sys.argv) < 2:
+    #     print("Usage: python script.py <verilog_module_file>")
+    #     sys.exit(1)
     
-    filename = sys.argv[1]
+    # filename = sys.argv[1]
+
+
     try:
         with open(filename, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -98,4 +105,6 @@ def main():
     print(stimulus)
 
 if __name__ == '__main__':
+    fl_path = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/usb_phy/"
+    filename = fl_path + "usb_phy_1.v"
     main()

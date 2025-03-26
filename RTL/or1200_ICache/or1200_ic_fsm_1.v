@@ -1,0 +1,217 @@
+//////////////////////////////////////////////////////////////////////
+////                                                              ////
+////  OR1200's IC FSM                                             ////
+////                                                              ////
+////  This file is part of the OpenRISC 1200 project              ////
+////  http://opencores.org/project,or1k                           ////
+////                                                              ////
+////  Description                                                 ////
+////  Insn cache state machine                                    ////
+////                                                              ////
+////  To Do:                                                      ////
+////   - make it smaller and faster                               ////
+////                                                              ////
+////  Author(s):                                                  ////
+////      - Damjan Lampret, lampret@opencores.org                 ////
+////                                                              ////
+//////////////////////////////////////////////////////////////////////
+////                                                              ////
+//// Copyright (C) 2000 Authors and OPENCORES.ORG                 ////
+////                                                              ////
+//// This source file may be used and distributed without         ////
+//// restriction provided that this copyright statement is not    ////
+//// removed from the file and that any derivative work contains  ////
+//// the original copyright notice and the associated disclaimer. ////
+////                                                              ////
+//// This source file is free software; you can redistribute it   ////
+//// and/or modify it under the terms of the GNU Lesser General   ////
+//// Public License as published by the Free Software Foundation; ////
+//// either version 2.1 of the License, or (at your option) any   ////
+//// later version.                                               ////
+////                                                              ////
+//// This source is distributed in the hope that it will be       ////
+//// useful, but WITHOUT ANY WARRANTY; without even the implied   ////
+//// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      ////
+//// PURPOSE.  See the GNU Lesser General Public License for more ////
+//// details.                                                     ////
+////                                                              ////
+//// You should have received a copy of the GNU Lesser General    ////
+//// Public License along with this source; if not, download it   ////
+//// from http://www.opencores.org/lgpl.shtml                     ////
+////                                                              ////
+//////////////////////////////////////////////////////////////////////
+
+module or1200_ic_fsm (
+
+    clk,
+    rst,
+
+    ic_en,
+    icqmem_cycstb_i,
+    icqmem_ci_i,
+    tagcomp_miss,
+    biudata_valid,
+    biudata_error,
+    start_addr,
+    saved_addr,
+    icram_we,
+    tag_we,
+    biu_read,
+    first_hit_ack,
+    first_miss_ack,
+    first_miss_err,
+    burst
+);
+
+  //
+  // I/O
+  //
+  input wire clk;
+  input wire rst;
+  input wire ic_en;
+  input wire icqmem_cycstb_i;
+  input wire icqmem_ci_i;
+  input wire tagcomp_miss;
+  input wire biudata_valid;
+  input wire biudata_error;
+  input wire [31:0] start_addr;
+  output wire [31:0] saved_addr;
+  output wire [3:0] icram_we;
+  output wire biu_read;
+  output wire first_hit_ack;
+  output wire first_miss_ack;
+  output wire first_miss_err;
+  output wire burst;
+  output wire tag_we;
+
+
+  reg [31:0] saved_addr_r;
+  reg [1:0] state;
+  reg [3:0] cnt;
+  reg        hitmiss_eval;
+  reg        load;
+  reg        cache_inhibit;
+  reg        last_eval_miss;  // JPB
+  reg [31:0] temp_addr;
+
+  //
+  // Generate of ICRAM write enables
+  //
+  assign icram_we = {4{biu_read & biudata_valid & !cache_inhibit}};
+  assign tag_we = biu_read & biudata_valid & !cache_inhibit;
+
+  //
+  // BIU read and write
+  //
+  assign biu_read = (hitmiss_eval & tagcomp_miss) | (!hitmiss_eval & load);
+
+  //assign saved_addr = hitmiss_eval ? start_addr : saved_addr_r;
+  assign saved_addr = saved_addr_r;
+
+  // Asserted when a cache hit occurs and the first word is ready/valid
+  assign first_hit_ack = (state == 2'd1) & hitmiss_eval & !tagcomp_miss & !cache_inhibit;
+
+  // Asserted when a cache miss occurs, but the first word of the new
+  // cache line is ready (on the bus)
+  // Cache hits overpower bus data
+  assign first_miss_ack = (state == 2'd1) & biudata_valid & ~first_hit_ack;
+
+  // Asserted when a cache occurs, but there was a bus error with handling
+  // the old line or fetching the new line
+  assign first_miss_err = (state == 2'd1) & biudata_error;
+
+  //
+  // Assert burst when doing reload of complete cache line
+  //
+  assign burst = (state == 2'd1) & tagcomp_miss & !cache_inhibit | (state == 2'd2);
+
+  //
+  // Main IC FSM
+  //
+  always @(posedge clk or posedge rst) begin
+    if (rst == (1'b1)) begin
+      state <= 2'd0;
+      saved_addr_r <= 32'b0;
+      hitmiss_eval <= 1'b0;
+      load <= 1'b0;
+      cnt <= 4'd0;
+      
+      last_eval_miss <= 0;  // JPB
+
+    end else
+      case (state)  // synopsys parallel_case
+        2'd0: begin
+          if (ic_en & icqmem_cycstb_i) begin  // fetch
+			state <= 2'd1;
+			saved_addr_r <= start_addr;
+			hitmiss_eval <= 1'b1;
+			load <= 1'b1;
+			cache_inhibit <= icqmem_ci_i;
+			last_eval_miss <= 0;  // JPB
+          end else begin  // idle
+			hitmiss_eval <= 1'b0;
+			load <= 1'b0;
+			cache_inhibit <= 1'b0;
+        end
+		end
+        2'd1: begin  // fetch
+		temp_addr = saved_addr_r;
+		if (icqmem_cycstb_i & icqmem_ci_i) cache_inhibit <=  1'b1;
+
+          if (hitmiss_eval) begin
+            temp_addr = {start_addr[31:13], temp_addr[12:0]};
+          end
+
+          if ((!ic_en) || (hitmiss_eval & !icqmem_cycstb_i) || (biudata_error) || (cache_inhibit & biudata_valid)) begin
+            state <= 2'd0;
+            hitmiss_eval <= 1'b0;
+            load <= 1'b0;
+            cache_inhibit <= 1'b0;
+          end else if (tagcomp_miss & biudata_valid) begin
+            state <= 2'd2;
+            temp_addr = {temp_addr[31:4], saved_addr_r[3:2] + 2'b1, temp_addr[1:0]};
+            hitmiss_eval <= 1'b0;
+            cnt <= ((1 << 4) - (2 * 4));
+            cache_inhibit <= 1'b0;
+          end else if (!icqmem_cycstb_i & !last_eval_miss) begin
+            state <= 2'd0;
+            hitmiss_eval <= 1'b0;
+            load <= 1'b0;
+            cache_inhibit <= 1'b0;
+          end else if (!tagcomp_miss & !icqmem_ci_i) begin
+            temp_addr = start_addr;
+            cache_inhibit <= 1'b0;
+          end else
+            hitmiss_eval <= 1'b0;
+
+          if (hitmiss_eval & !tagcomp_miss)  // JPB
+            last_eval_miss <= 1;  // JPB
+
+          saved_addr_r <= temp_addr;
+        end
+        2'd2: begin
+          // abort because IC has just been turned off
+          if (!ic_en) begin
+            // invalidate before IC can be turned on
+            state <= 2'd0;
+            saved_addr_r <= start_addr;
+            hitmiss_eval <= 1'b0;
+            load <= 1'b0;
+          end else if (biudata_valid && (|cnt)) begin
+            cnt <= cnt - 4'd4;
+            saved_addr_r <= {saved_addr_r[31:4], saved_addr_r[4-1:2] + 2'b1, saved_addr_r[1:0]};
+            //saved_addr_r[4-1:2] 
+            // <= saved_addr_r[4-1:2] + 1;
+          end else if (biudata_valid) begin
+            state <= 2'd0;
+            saved_addr_r <= start_addr;
+            hitmiss_eval <= 1'b0;
+            load <= 1'b0;
+          end
+        end
+        default: state <= 2'd0;
+      endcase
+  end
+
+
+endmodule

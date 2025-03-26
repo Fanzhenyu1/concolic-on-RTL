@@ -27,7 +27,8 @@ def get_z3_code(signal_inout):
     return z3_code
 
 if __name__ == "__main__":
-    verilog_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/core/clint/clint.v"  # Verilog 源代码
+    # verilog_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/core/clint/clint.v"  # Verilog 源代码
+    verilog_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case3/case3_1.v"  # Verilog 源代码
     signals = parse_verilog_signals(verilog_file)
     print(signals)
     print("自动生成的 Z3Py 代码：\n")

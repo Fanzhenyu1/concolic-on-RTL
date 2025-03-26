@@ -1,5 +1,6 @@
 import subprocess
 import os
+import random
 import time
 import psutil
 import gc
@@ -39,16 +40,19 @@ class MemoryMonitor(Thread):
 
 # 主进程
 def main_process():
+    fl_path = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case3/"
+    # seed_value = random.randint(0, 4294967295)
+    seed_value = 8
     commands = [
-        # "cd d:/mylife_yanjiu/project/concolic_on_RTL/RTL/core/clint/",  # 打开路径
-        "iverilog -o wave clint.v clint_tb.v",  # 第一条命令
-        "vvp -n wave lxt2"                         # 第二条命令（假设需仿真）
+        # "cd d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case3/",  # 打开路径
+        f"iverilog -g2012 -o {fl_path}wave {fl_path}dut.v {fl_path}case3_tb.v",  # 第一条命令
+        f"vvp -n {fl_path}wave +SEED={seed_value} lxt2 > {fl_path}sim.log"                         # 第二条命令（假设需仿真）
         # ,"gtkwave wave.vcd"                         # 第三条命令（假设需查看波形）
     ]
 
     for cmd in commands:
         try:
-            result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+            result = subprocess.run(cmd, cwd=fl_path, shell=True, check=True, capture_output=True, text=True)
             print(f"执行成功：{cmd}")
             print(result.stdout)
         except subprocess.CalledProcessError as e:
@@ -60,8 +64,8 @@ def main_process():
     return 0
 
 def main():
-    # 加强版垃圾回收
-    for _ in range(3):
+
+    for _ in range(3):  # 重复执行3次
         gc.collect()
     monitor = MemoryMonitor()
     monitor.start()
