@@ -55,78 +55,6 @@ class SignalUnroller:
         return self.signal_categories.get(category, [])
 
 
-class MultiCycleConstraintManager:
-    def __init__(self, unroller):
-        """
-        :param unroller: SignalUnroller实例，提供符号化变量
-        """
-        self.unroller = unroller
-        self.solver = Solver()
-        self.constraints = []
-        
-    def add_generic_constraint(self, constraint):
-        """添加任意类型的约束"""
-        self.constraints.append(constraint)
-        
-    def add_cycle_constraint(self, cycle, constraint_fn):
-        """
-        添加特定周期的约束
-        :param cycle: 目标周期号
-        :param constraint_fn: 函数格式 lambda sym: expression
-        """
-        syms = self.unroller.get_cycle_symbols(cycle)
-        self.constraints.append(constraint_fn(syms))
-    
-    def add_cross_cycle_constraint(self, prev_cycle, curr_cycle, constraint_fn):
-        """
-        添加跨周期约束（时序逻辑）
-        :param prev_cycle: 前一周期的符号
-        :param curr_cycle: 当前周期的符号
-        :param constraint_fn: 函数格式 lambda prev, curr: expression
-        """
-        prev_syms = self.unroller.get_cycle_symbols(prev_cycle)
-        curr_syms = self.unroller.get_cycle_symbols(curr_cycle)
-        self.constraints.append(constraint_fn(prev_syms, curr_syms))
-    
-    def add_input_constraints(self, constraint_fn):
-        """
-        添加所有输入信号的约束
-        :param constraint_fn: 函数格式 lambda inputs: expression
-        """
-        for cycle in range(self.unroller.num_cycles):
-            syms = self.unroller.get_cycle_symbols(cycle)
-            inputs = {name: syms[name] for name in self.unroller.get_signal_category('inputs')}
-            self.constraints.append(constraint_fn(inputs))
-    
-    def add_reset_constraints(self, active_cycles):
-        """
-        添加复位约束
-        :param active_cycles: 需要保持复位的周期列表
-        """
-        for cycle in active_cycles:
-            syms = self.unroller.get_cycle_symbols(cycle)
-            self.constraints.append(syms['rst'] == BitVecVal(1, 1))
-    
-    def solve_and_validate(self):
-        """执行求解并返回结果"""
-        self.solver.add(self.constraints)
-        if self.solver.check() == sat:
-            model = self.solver.model()
-            return self._parse_solution(model)
-        else:
-            return None
-    
-    def _parse_solution(self, model):
-        """解析求解结果为可读格式"""
-        solution = []
-        for cycle in range(self.unroller.num_cycles):
-            syms = self.unroller.get_cycle_symbols(cycle)
-            cycle_solution = {}
-            for name in syms:
-                cycle_solution[name] = model.evaluate(syms[name])
-            solution.append(cycle_solution)
-        return solution
-
 class ConstraintAutomator:
     def __init__(self, unroller):
         self.unroller = unroller  # SignalUnroller实例
@@ -158,10 +86,28 @@ class ConstraintAutomator:
                 self._process_blocking_assign(assign, curr_syms)
 
     def _parse_verilog_condition(self, condition, syms_dict):
-        """集成你的parse_condition函数"""
-        # 替换信号名为当前周期符号
-        for sig in syms_dict:
-            condition = re.sub(r'\b' + sig + r'\b', f'syms_dict["{sig}"]', condition)
+        """解析Verilog条件，并对1位信号做条件包装（如果不是参与比较则包装为布尔判断）"""
+        # 针对每个信号进行替换
+        for sig, (sig_type, width) in self.unroller.signal_def.items():
+            pattern = r'\b' + re.escape(sig) + r'\b'
+            if width == 1:
+                # 使用自定义函数进行替换，根据前后字符判断是否参与比较
+                def repl(m):
+                    # m.string为原始字符串，m.start()和m.end()为匹配位置
+                    s = m.string
+                    start, end = m.start(), m.end()
+                    # 查看匹配项前后的若干字符（这里取3个字符作为上下文，可根据需要调整）
+                    prefix = s[max(0, start-3):start]
+                    suffix = s[end:end+3]
+                    # 如果前后含有 '==' 则视为比较中，不再包装
+                    if '==' in prefix or '==' in suffix:
+                        return f'syms_dict["{sig}"]'
+                    else:
+                        return f'(syms_dict["{sig}"] == BitVecVal(1,1))'
+                condition = re.sub(pattern, repl, condition)
+            else:
+                # 非1位信号直接替换
+                condition = re.sub(pattern, f'syms_dict["{sig}"]', condition)
         
         # 生成Z3表达式对象
         parsed_str = parse_condition(condition)
@@ -176,6 +122,7 @@ class ConstraintAutomator:
             'BitVecVal': BitVecVal,
             'syms_dict': syms_dict
         }
+        pass
         return eval(parsed_str, {}, z3_env)
 
     def _process_nonblocking_assign(self, assignment, curr_syms, next_syms):
@@ -236,40 +183,62 @@ class ConstraintAutomator:
         else:
             lhs, rhs = assignment.split('=', 1)
             return lhs.strip(), rhs.strip()
+    
+    def get_solver_assertions(self):
+        """获取求解器中的SMT-LIB格式断言"""
+        return self.solver.to_smt2()
 
 def main():
+    # 字典列表转化
+    CDFG_dict = {}
+    CDFG_dict = {k: v for CDFG in CDFG_list for k, v in CDFG.items()}
+    print(CDFG_dict)
+
     # 实例化信号展开器
     unroller = SignalUnroller(signal_def, num_cycles=5)
     
     # 实例化约束管理器
     automator = ConstraintAutomator(unroller)
+
     # 添加多周期约束
     # ---------------------------------------------------
-    # 周期0约束：复位信号有效
+    # 周期0约束：
     automator.add_verilog_constraints(
         cycle=0,
-        verilog_conditions=["rst == 1'b1"],
-        verilog_assignments=["count <= 2'b0"]
+        verilog_conditions=[CDFG_dict['1,1,0,1']['condition']],
+        verilog_assignments=[CDFG_dict['1,1,0,1']['action']]
     )
 
-    # 周期1约束：复位无效，启用计数器
+    # 周期1约束：
     automator.add_verilog_constraints(
         cycle=1,
-        verilog_conditions=["rst == 1'b0 && enable == 1'b1"],
+        verilog_conditions=[CDFG_dict['1,1,0,0,0,1']['condition']],
         verilog_assignments=[
-            "count <= count + 1",  # 非阻塞赋值，周期2生效
-            "trigger = (count == 2'b10)"  # 阻塞赋值，立即生效
+            CDFG_dict['1,1,0,0,0,1']['action'],  # 非阻塞赋值，周期2生效
+            CDFG_dict['2,1']['action']  # 阻塞赋值，立即生效
         ]
     )
 
-    # 周期2约束：持续计数
+    # 周期2约束：
     automator.add_verilog_constraints(
         cycle=2,
+        verilog_conditions=[CDFG_dict['1,1,0,0,1']['condition']],
         verilog_assignments=[
-            "count <= count + 1",
-            "trigger = (count == 2'b11)"
+            CDFG_dict['1,1,0,0,1']['action'],
+            CDFG_dict['0,0']['action'],
+            CDFG_dict['3,1']['action']
         ]
     )
+
+    # 周期3约束：
+    automator.add_verilog_constraints(
+        cycle=3,
+        verilog_conditions=[CDFG_dict['4,1,0,1,1']['condition']],
+        verilog_assignments=[]
+    )
+
+    # 查看自动化生成的SMT断言
+    print("SMT-LIB格式的约束:\n", automator.get_solver_assertions())
 
     # 执行求解
     if automator.solver.check() == sat:
@@ -301,10 +270,6 @@ def main():
 # 使用示例
 # ---------------------------
 if __name__ == "__main__":
-    signal_def = {
-        'rst': (1, 1),       # 输入，1-bit
-        'enable': (1, 1),    # 输入，1-bit
-        'count': (2, 2),     # 状态寄存器，4-bit
-        'trigger': (3, 1)    # 输出，1-bit
-    }
+    signal_def = {'clk': (1, 1), 'rst': (1, 1), 'input_a': (1, 32), 'input_b': (1, 32), 'ctr': (1, 32), 'ht_out': (3, 32), 'signal1': (2, 1), 'signal2': (2, 1), 'signal3': (2, 1), 'ctr_1': (2, 32), 'ctr_2': (2, 32), 'trigger': (2, 1)}
+    CDFG_list = [{'0,0': {'condition': '', 'action': 'trigger = signal1 & signal2 & signal3;', 'block_path': ['0,0']}}, {'1,1': {'condition': '', 'action': '', 'block_path': ['1,1']}, '1,1,1': {'condition': "(rst) == 1'b1", 'action': "signal1 <= 1'b0;signal2 <= 1'b0;signal3 <= 1'b0;", 'block_path': ['1,1', '1,1,1']}, '1,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['1,1', '1,1,0']}, '1,1,0,1': {'condition': "(input_a == 32'h11223344)", 'action': "signal2 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,1']}, '1,1,0,0': {'condition': "!(input_a == 32'h11223344)", 'action': '', 'block_path': ['1,1', '1,1,0', '1,1,0,0']}, '1,1,0,0,1': {'condition': "(input_b == 32'h55667788 && signal1)", 'action': "signal3 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,1']}, '1,1,0,0,0': {'condition': "!(input_b == 32'h55667788 && signal1)", 'action': '', 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0']}, '1,1,0,0,0,1': {'condition': "(input_a == 32'h99AABBCC && input_b == 32'hDDCCEEFF && signal2)", 'action': "signal1 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0', '1,1,0,0,0,1']}, '1,1,0,0,0,0': {'condition': "!(input_a == 32'h99AABBCC && input_b == 32'hDDCCEEFF && signal2)", 'action': "signal1 <= 1'b0;signal2 <= 1'b0;signal3 <= 1'b0;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0', '1,1,0,0,0,0']}}, {'2,1': {'condition': '', 'action': 'ctr_1 <= ctr;', 'block_path': ['2,1']}}, {'3,1': {'condition': '', 'action': 'ctr_2 <= ctr_1;', 'block_path': ['3,1']}}, {'4,1': {'condition': '', 'action': '', 'block_path': ['4,1']}, '4,1,1': {'condition': "(rst) == 1'b1", 'action': "ht_out <= 32'b0;", 'block_path': ['4,1', '4,1,1']}, '4,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['4,1', '4,1,0']}, '4,1,0,1': {'condition': "(ctr_2 == 32'h12345678)", 'action': '', 'block_path': ['4,1', '4,1,0', '4,1,0,1']}, '4,1,0,1,1': {'condition': "(trigger == 1'b1)", 'action': "ht_out <= {ht_out[30:0], ht_out[31] ^ 1'b1};", 'block_path': ['4,1', '4,1,0', '4,1,0,1', '4,1,0,1,1']}, '4,1,0,1,0': {'condition': "!(trigger == 1'b1)", 'action': 'ht_out <= {ht_out[30:0], ht_out[31]};', 'block_path': ['4,1', '4,1,0', '4,1,0,1', '4,1,0,1,0']}, '4,1,0,0': {'condition': "!(ctr_2 == 32'h12345678)", 'action': 'ht_out <= ht_out;', 'block_path': ['4,1', '4,1,0', '4,1,0,0']}}] 
     main()

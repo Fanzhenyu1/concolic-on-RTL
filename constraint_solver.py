@@ -179,7 +179,7 @@ if __name__ == '__main__':
     signal3 = BitVec('signal1', 1)
     trigger = BitVec('trigger', 1)
 
-    constraints = ["input_b == 32'h55667788 && signal1", "trigger = signal1 & signal2 & signal3;", "ctr_2 <= ctr_1;", "signal3 <= 1'b1;"]
+    constraints = ["input_a == 32'h99AABBCC && input_b == 32'hDDCCEEFF && signal2"]
 
     main(constraints)
 
