@@ -153,6 +153,6 @@ def main():
 
 if __name__ == "__main__":
     # define_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/or1200_ICache/src/or1200_defines.v"  # 宏定义文件
-    verilog_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case3/case3.v"  # Verilog 源代码
-    output_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case3/case3_1.v"  # 处理后的输出文件
+    verilog_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/case1.v"  # Verilog 源代码
+    output_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/case1_1.v"  # 处理后的输出文件
     main()

@@ -330,7 +330,7 @@ def main_z3_solver(constraint_stack, signal_inout, signal_midle):
 
 # Example usage
 # constraint_stack1 = ["r_in == 6'b101010", "a <= r_in;", "b < a & 6'b100100", "b <= 6'b100110"]
-# constraint_stack2 = ["(!(i_rx_phy_rxdp_s) & i_rx_phy_rxdn_s) && i_rx_phy_rx_en", "i_rx_phy_rxdp_s <= (i_rx_phy_rxdp_s0 | i_rx_phy_rxdp_s1 | i_rx_phy_rxdp_s_r);"]
+constraint_stack2 = ["st  = state + 4'd2;"]
 
 
 # rst = BitVec('rst', 1)
@@ -421,7 +421,14 @@ def main_z3_solver(constraint_stack, signal_inout, signal_midle):
 # i_rx_phy_fs_ce_r1 = BitVec('i_rx_phy_fs_ce_r1', 1)
 # i_rx_phy_fs_ce_r2 = BitVec('i_rx_phy_fs_ce_r2', 1)
 
-# main_z3_solver(constraint_stack2, {}, {})
+in_1 = BitVec('in_1', 8)
+out = BitVec('out', 8)
+clk = BitVec('clk', 1)
+state = BitVec('state', 4)
+st = BitVec('st', 4)
+st2 = BitVec('st2', 4)
+
+main_z3_solver(constraint_stack2, {}, {})
 
 # for i in range(len(constraint_stack_list)):
 #     constraint_stack = constraint_stack_list[i]

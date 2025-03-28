@@ -40,12 +40,12 @@ class MemoryMonitor(Thread):
 
 # 主进程
 def main_process():
-    fl_path = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case3/"
+    fl_path = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/"
     # seed_value = random.randint(0, 4294967295)
     seed_value = 8
     commands = [
-        # "cd d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case3/",  # 打开路径
-        f"iverilog -g2012 -o {fl_path}wave {fl_path}dut.v {fl_path}case3_tb.v",  # 第一条命令
+        # "cd d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/",  # 打开路径
+        f"iverilog -g2012 -o {fl_path}wave {fl_path}dut.v {fl_path}case1_tb.v",  # 第一条命令
         f"vvp -n {fl_path}wave +SEED={seed_value} lxt2 > {fl_path}sim.log"                         # 第二条命令（假设需仿真）
         # ,"gtkwave wave.vcd"                         # 第三条命令（假设需查看波形）
     ]

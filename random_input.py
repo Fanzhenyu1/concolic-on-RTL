@@ -105,6 +105,6 @@ def main():
     print(stimulus)
 
 if __name__ == '__main__':
-    fl_path = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/usb_phy/"
-    filename = fl_path + "usb_phy_1.v"
+    fl_path = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/"
+    filename = fl_path + "case1_1.v"
     main()

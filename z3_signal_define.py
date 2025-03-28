@@ -79,17 +79,17 @@ def get_z3_code(signal_inout):
     # 自动生成 Z3Py 定义的代码字符串
     z3_code = ""
     for signal_name, bit_width in signal_inout.items():
-        z3_code += f"{signal_name} = BitVec('{signal_name}', {bit_width})\n"
+        z3_code += f"    {signal_name} = BitVec('{signal_name}', {bit_width})\n"
     return z3_code
 
 if __name__ == "__main__":
     # verilog_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/core/clint/clint.v"  # Verilog 源代码
-    verilog_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case3/case3_1.v"  # Verilog 源代码
-    # signals = parse_verilog_signals(verilog_file)
-    # print(signals)
-    # print("自动生成的 Z3Py 代码：\n")
-    # print(get_z3_code(signals))
+    verilog_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/case1_1.v"  # Verilog 源代码
+    signals = parse_verilog_signals(verilog_file)
+    print(signals)
+    print("自动生成的 Z3Py 代码：\n")
+    print(get_z3_code(signals))
 
     # 新版解析Verilog信号定义
-    signals = parse_verilog_new(verilog_file)
-    print(signals)
+    signals_new = parse_verilog_new(verilog_file)
+    print(signals_new)

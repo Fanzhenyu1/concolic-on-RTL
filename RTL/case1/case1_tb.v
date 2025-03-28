@@ -1,64 +1,55 @@
-module case1_tb();
+//~ `New testbench
+`timescale  1ns / 1ps
 
-    // Generated top module signals
-    reg  clk;
-    reg  rst;
-    reg  [7:0]in = 8'b0;
+module tb_case1();
+
+// case1 Parameters
+parameter PERIOD  = 10;
 
 
-    wire [7:0]out;
+// case1 Inputs
+reg   [7:0]  in                            = 0 ;
+reg   clk                                  = 0 ;
+reg   rst                                  = 0 ;
 
-    // Generated top module instance
-    case1 _conc_top_inst(
-            .clk     ( clk ),
-            .rst     ( rst ),
-            .in     ( in ),
+// case1 Outputs
+wire  [7:0]  out                           ;
 
-            .out     ( out ));
 
-    // Generated clk pulse
-    always begin
-        #5 clk = ~clk;
+initial
+begin
+    forever #(PERIOD/2)  clk=~clk;
+end
+
+initial
+begin
+    #(PERIOD) rst  =  0;
+end
+
+case1  u_case1 (
+    .in                      ( in   [7:0] ),
+    .clk                     ( clk        ),
+    .rst                     ( rst        ),
+
+    .out                     ( out  [7:0] )
+);
+
+integer i;
+initial begin
+    in = 0;
+    clk = 0;
+    #10;
+    for(i = 0; i < 1000; i = i + 1) begin
+        $display("********Period %d********", i);
+        in = $random & 8'd255;
+        clk = $random & 1'd1;
+        #10;
     end
-    integer i, seed;
-    // Generated initial block
-    initial begin
-        clk = 1'b0;
-        rst = 1'b0;
-        in = 8'b0;
+    $finish;
+end
+initial begin
+    $dumpfile("wave.vcd");
+    $dumpvars(0, tb_case1);
+end
 
-
-        #2 clk = 1'b1;
-        rst = 1'b1;
-        #5 rst = 1'b0;
-
-        #1 in = 8'h26;
-        #9;
-        $display("Period 0: in = %b, out = %b", in, out);
-
-        #1 in = 8'hf5;
-        #9;
-        $display("Period 1: in = %b, out = %b", in, out);
-
-        #1 in = 8'h6e;
-        #9;
-        $display("Period 2: in = %b, out = %b", in, out);        
-
-        for(i= 3; i<20; i++) begin
-            #1;
-            in = $random(seed);
-
-            #9;
-            $display("Period %d: in = %b, out = %b", i, in, out);
-        end
-
-
-        $finish;
-    end
-
-    initial
-    begin            
-        $dumpfile("wave.vcd");        //生成的vcd文件名称
-        $dumpvars(0, case1_tb);    //tb模块名称
-    end 
 endmodule

@@ -397,8 +397,8 @@ def monitored_task():
     # pre_code = code_preprocess(flpath,file1)        # 预处理verilog代码,输出list类型
     # cdfg_list, inout_port = main_process(pre_code)                          # 主体处理函数,输出list类型
 
-    flpath = 'D:/mylife_yanjiu/project/concolic_on_RTL/RTL/case3/'
-    file1 = 'case3.v'
+    flpath = 'D:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/'
+    file1 = 'case1_1.v'
     pre_code = code_preprocess(flpath,file1)        # 预处理verilog代码,输出list类型
     cdfg_list, inout_port = main_process(pre_code)                          # 主体处理函数,输出list类型
 

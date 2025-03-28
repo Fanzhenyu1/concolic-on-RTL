@@ -406,8 +406,8 @@ def always_process(line, num):                             # 处理always块,lin
 
 def monitored_task():
 
-    flpath = 'D:/mylife_yanjiu/project/concolic_on_RTL/RTL/case3/'
-    file1 = 'case3.v'
+    flpath = 'D:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/'
+    file1 = 'case1_1.v'
     file2 = file1.split('.')[0] + '_preprocessed.txt'
 
     with open(flpath + file2, 'r') as f:
