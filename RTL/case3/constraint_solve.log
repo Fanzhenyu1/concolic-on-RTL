@@ -1,0 +1,36 @@
+生成的输入激励序列：
+
+Cycle 0:
+  clk    = clk__0 ([未完全约束])
+  rst    = rst__0 ([未完全约束])
+  input_a = 287454020 (0x11223344)
+  input_b = input_b__0 ([未完全约束])
+  ctr    = ctr__0 ([未完全约束])
+
+Cycle 1:
+  clk    = clk__1 ([未完全约束])
+  rst    = rst__1 ([未完全约束])
+  input_a = 2578103244 (0x99AABBCC)
+  input_b = 3721195263 (0xDDCCEEFF)
+  ctr    = 305419896 (0x12345678)
+
+Cycle 2:
+  clk    = clk__2 ([未完全约束])
+  rst    = rst__2 ([未完全约束])
+  input_a = input_a__2 ([未完全约束])
+  input_b = 1432778632 (0x55667788)
+  ctr    = ctr__2 ([未完全约束])
+
+Cycle 3:
+  clk    = clk__3 ([未完全约束])
+  rst    = rst__3 ([未完全约束])
+  input_a = input_a__3 ([未完全约束])
+  input_b = input_b__3 ([未完全约束])
+  ctr    = ctr__3 ([未完全约束])
+
+Cycle 4:
+  clk    = clk__4 ([未完全约束])
+  rst    = rst__4 ([未完全约束])
+  input_a = input_a__4 ([未完全约束])
+  input_b = input_b__4 ([未完全约束])
+  ctr    = ctr__4 ([未完全约束])

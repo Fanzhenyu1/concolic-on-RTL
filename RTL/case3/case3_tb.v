@@ -52,26 +52,41 @@ initial begin
         ctr = $random;
         #10;
     end
-    input_a = 32'h11223344;
+// Cycle 0
+    $display("********Period %d********", 10);
+    input_a = 32'd287454020;
     input_b = $random;
     ctr = $random;
     #10;
-    input_a = 32'h99AABBCC;
-    input_b = 32'hDDCCEEFF;
-    ctr = 32'h12345678;
+
+// Cycle 1
+    $display("********Period %d********", 11);
+    input_a = 32'd2578103244;
+    input_b = 32'd3721195263;
+    ctr = 32'd305419896;
     #10;
-    input_a = 32'h14572219;
-    input_b = 32'h55667788;
+
+// Cycle 2
+    $display("********Period %d********", 12);
+    input_a = $random;
+    input_b = 32'd1432778632;
     ctr = $random;
-    #10;      
+    #10;
+
+// Cycle 3
+    $display("********Period %d********", 13);
     input_a = $random;
     input_b = $random;
     ctr = $random;
     #10;
+
+// Cycle 4
+    $display("********Period %d********", 14);
     input_a = $random;
     input_b = $random;
     ctr = $random;
     #10;
+    $display("********Period %d********", 15);
     input_a = $random;
     input_b = $random;
     ctr = $random;

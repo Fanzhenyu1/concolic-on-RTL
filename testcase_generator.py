@@ -1,7 +1,7 @@
 from z3 import *
 import re
 from verilog2z3 import parse_condition
-
+from pathlib import Path
 class SignalUnroller:
     def __init__(self, signal_inout, num_cycles=3):
         """
@@ -59,7 +59,7 @@ class ConstraintAutomator:
     def __init__(self, unroller):
         self.unroller = unroller  # SignalUnroller实例
         self.solver = Solver()
-        
+  
     def add_verilog_constraints(self, cycle, verilog_conditions=[], verilog_assignments=[]):
         """
         集成Verilog解析器的约束添加方法
@@ -188,7 +188,34 @@ class ConstraintAutomator:
         """获取求解器中的SMT-LIB格式断言"""
         return self.solver.to_smt2()
 
-def main():
+def generate_constraints_code(cycles_config, cdfg_dict_name="CDFG_dict"):
+    code_blocks = []
+    
+    for config in cycles_config:
+        # 生成条件表达式
+        conditions = [f"{cdfg_dict_name}['{key}']['condition']" 
+                     for key in config['condition_keys']]
+        conditions_str = ", ".join(conditions)
+        
+        # 生成赋值表达式
+        actions = [f"{cdfg_dict_name}['{key}']['action']" 
+                  for key in config['action_keys']]
+        actions_str = ",\n            ".join(actions)
+        
+        # 构建完整代码块
+        code = f"""    # 周期{config['cycle']}约束
+    automator.add_verilog_constraints(
+        cycle={config['cycle']},
+        verilog_conditions=[{conditions_str}],
+        verilog_assignments=[
+            {actions_str}
+        ]
+    )"""
+        code_blocks.append(code)
+    
+    return "\n\n".join(code_blocks)
+
+def constraint_build_solver(log_path=None):
     # 字典列表转化
     CDFG_dict = {}
     CDFG_dict = {k: v for CDFG in CDFG_list for k, v in CDFG.items()}
@@ -202,24 +229,26 @@ def main():
 
     # 添加多周期约束
     # ---------------------------------------------------
-    # 周期0约束：
+    # 周期0约束
     automator.add_verilog_constraints(
         cycle=0,
         verilog_conditions=[CDFG_dict['1,1,0,1']['condition']],
-        verilog_assignments=[CDFG_dict['1,1,0,1']['action']]
+        verilog_assignments=[
+            CDFG_dict['1,1,0,1']['action']
+        ]
     )
 
-    # 周期1约束：
+    # 周期1约束
     automator.add_verilog_constraints(
         cycle=1,
         verilog_conditions=[CDFG_dict['1,1,0,0,0,1']['condition']],
         verilog_assignments=[
-            CDFG_dict['1,1,0,0,0,1']['action'],  # 非阻塞赋值，周期2生效
-            CDFG_dict['2,1']['action']  # 阻塞赋值，立即生效
+            CDFG_dict['1,1,0,0,0,1']['action'],
+            CDFG_dict['2,1']['action']
         ]
     )
 
-    # 周期2约束：
+    # 周期2约束
     automator.add_verilog_constraints(
         cycle=2,
         verilog_conditions=[CDFG_dict['1,1,0,0,1']['condition']],
@@ -230,15 +259,34 @@ def main():
         ]
     )
 
-    # 周期3约束：
+    # 周期3约束
     automator.add_verilog_constraints(
         cycle=3,
-        verilog_conditions=[CDFG_dict['4,1,0,1,1']['condition']],
-        verilog_assignments=[]
+        verilog_conditions=[CDFG_dict['4,1,0,1,1']['condition'], CDFG_dict['4,1,0,1']['condition']],
+        verilog_assignments=[
+
+        ]
     )
 
     # 查看自动化生成的SMT断言
     print("SMT-LIB格式的约束:\n", automator.get_solver_assertions())
+
+    # 创建文件处理器
+    def create_file_handler(path):
+        from pathlib import Path
+        
+        # 确保目录存在
+        log_dir = Path(path).parent
+        log_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 创建文件并返回句柄
+        return open(path, 'w', encoding='utf-8')
+    # 输出控制逻辑
+    if log_path:
+        log_file = create_file_handler(log_path)
+        print(f"Logging to {log_path}")
+    else:
+        log_file = None
 
     # 执行求解
     if automator.solver.check() == sat:
@@ -247,29 +295,181 @@ def main():
         # 获取输入信号列表
         input_signals = unroller.get_signal_category('inputs')
         
-        # 解析并打印输入激励
-        print("生成的输入激励序列：")
-        for cycle in range(unroller.num_cycles):
-            syms = unroller.get_cycle_symbols(cycle)
-            print(f"\nCycle {cycle}:")
-            
-            # 仅输出输入信号
-            for sig in input_signals:
-                val = model.evaluate(syms[sig])
-                if isinstance(val, BitVecNumRef):
-                    hex_value = f"0x{val.as_long():X}"
+        try:
+            # 解析并打印输入激励
+            header = "生成的输入激励序列："
+            if log_file:
+                print(header, file=log_file)
+            else:
+                print(header)
+
+            for cycle in range(unroller.num_cycles):
+                syms = unroller.get_cycle_symbols(cycle)
+                cycle_info = []
+
+                # 构建周期头部信息
+                cycle_info.append(f"\nCycle {cycle}:")
+
+                # 仅输出输入信号
+                for sig in input_signals:
+                    val = model.evaluate(syms[sig])
+                    if isinstance(val, BitVecNumRef):
+                        hex_value = f"0x{val.as_long():X}"
+                        line = f"  {sig.ljust(6)} = {val} ({hex_value})"
+                    else:
+                        line = f"  {sig.ljust(6)} = {val} ([未完全约束])"
+                    cycle_info.append(line)
+
+                # 输出到目标
+                output = '\n'.join(cycle_info)
+                if log_file:
+                    print(output, file=log_file)
+                    log_file.flush()  # 确保及时写入
                 else:
-                    hex_value = "[未完全约束]"
-                print(f"  {sig.ljust(6)} = {val} ({hex_value})")
+                    print(output)
+
+        finally:
+            # 资源清理
+            if log_file:
+                log_file.close()
     else:
         print("无解！约束存在冲突")
 
+def log_to_config(log_path, target_signals=['input_a', 'input_b', 'ctr']):
+    signal_pattern = re.compile(
+        r'^(?P<signal>\w+)\s*=\s*(?P<value>\S+).*?\((?P<comment>[^)]+)\)$'
+    )
+    config = []
+    current_cycle = -1
+    
+    with open(log_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            
+            # 周期检测
+            if line.startswith("Cycle "):
+                current_cycle = int(line.split()[1].rstrip(':'))
+                config.append({sig: None for sig in target_signals})
+                continue
+            
+            # 信号解析（仅在有效周期内处理）
+            if current_cycle >= 0 and line:
+                match = signal_pattern.match(line)
+                if match:
+                    sig_info = match.groupdict()
+                    sig_name = sig_info['signal']
+                    
+                    if sig_name in target_signals:
+                        # 数值解析逻辑
+                        value = None
+                        
+                        # 情况1：注释包含十六进制值
+                        hex_match = re.search(r'0x([0-9A-Fa-f]+)', sig_info['comment'])
+                        if hex_match:
+                            value = int(hex_match.group(1), 16)
+                        
+                        # 情况2：值字段为数字
+                        elif sig_info['value'].isdigit():
+                            value = int(sig_info['value'])
+                        
+                        # 情况3：未约束标记
+                        elif '[未完全约束]' in sig_info['comment']:
+                            value = None
+                        
+                        config[current_cycle][sig_name] = value
+
+    return config
+
+def generate_testbench(cycles, signal_def):
+    # 生成输入信号列表（排除clk/rst）
+    input_signals = []
+    for sig, (io_type, width) in signal_def.items():
+        if io_type == 1 and sig not in (clk_name, rst_name):
+            if sig not in input_signals:
+                input_signals.append(sig)  # 保持原始顺序
+    
+    tb_code = []
+    for cycle_num, cycle in enumerate(cycles):
+        signals = []
+        for sig in input_signals:
+            width = signal_def[sig][1]  # 获取位宽
+            
+            # 处理信号赋值
+            if sig in cycle:
+                value = cycle[sig]
+                if value is None:
+                    signals.append(f"{sig} = $random;")
+                else:
+                    # 应用位宽掩码并生成十进制
+                    masked = value & ((1 << width) - 1)
+                    signals.append(f"{sig} = {width}'d{masked};")
+            else:
+                signals.append(f"{sig} = $random;")
+        
+        # 添加时间控制
+        signals.append("#10;")
+        
+        # 合并周期代码
+        tb_code.append(f"// Cycle {cycle_num}\n    " + "\n    ".join(signals))
+    
+    return "\n\n".join(tb_code)
+
 # -------------------------------------------------
+def main():
+    # 路径设置
+    path_config = [
+        {
+            'cycle': 0,
+            'condition_keys': ['1,1,0,1'],
+            'action_keys': ['1,1,0,1']
+        },        
+        {
+            'cycle': 1,
+            'condition_keys': ['1,1,0,0,0,1'],
+            'action_keys': ['1,1,0,0,0,1', '2,1']
+        },        
+        {
+            'cycle': 2,
+            'condition_keys': ['1,1,0,0,1'],
+            'action_keys': ['1,1,0,0,1', '0,0', '3,1']
+        },
+        {
+            'cycle': 3,
+            'condition_keys': ['4,1,0,1,1', '4,1,0,1'],
+            'action_keys': []
+        }
+    ]
+    # 约束代码生成
+    # generated_code = generate_constraints_code(path_config)
+    # print(generated_code)
+
+    log_path="./RTL/case3/constraint_solve.log"
+    # # 约束建立&求解
+    # constraint_build_solver(log_path)
+
+    sim_config = log_to_config(log_path)
+    print(sim_config)
+    # # sim_config = [
+    # #     {"input_a": 287454020, "input_b": None, "ctr": None},
+    # #     {"input_a": 2578103244, "input_b": 3721195263, "ctr": 305419896},
+    # #     {"input_a": None, "input_b": 1432778632, "ctr": None},
+    # #     {"input_a": None, "input_b": None, "ctr": None},
+    # #     {"input_a": None, "input_b": None, "ctr": None}
+    # # ]
+    # # 激励文本生成
+    gen_sim = generate_testbench(sim_config, signal_def)
+    print(gen_sim)
+
 
 # ---------------------------
 # 使用示例
 # ---------------------------
 if __name__ == "__main__":
+    # 定义clk和rst name
+    clk_name = 'clk'
+    rst_name = 'rst'
+
     signal_def = {'clk': (1, 1), 'rst': (1, 1), 'input_a': (1, 32), 'input_b': (1, 32), 'ctr': (1, 32), 'ht_out': (3, 32), 'signal1': (2, 1), 'signal2': (2, 1), 'signal3': (2, 1), 'ctr_1': (2, 32), 'ctr_2': (2, 32), 'trigger': (2, 1)}
+
     CDFG_list = [{'0,0': {'condition': '', 'action': 'trigger = signal1 & signal2 & signal3;', 'block_path': ['0,0']}}, {'1,1': {'condition': '', 'action': '', 'block_path': ['1,1']}, '1,1,1': {'condition': "(rst) == 1'b1", 'action': "signal1 <= 1'b0;signal2 <= 1'b0;signal3 <= 1'b0;", 'block_path': ['1,1', '1,1,1']}, '1,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['1,1', '1,1,0']}, '1,1,0,1': {'condition': "(input_a == 32'h11223344)", 'action': "signal2 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,1']}, '1,1,0,0': {'condition': "!(input_a == 32'h11223344)", 'action': '', 'block_path': ['1,1', '1,1,0', '1,1,0,0']}, '1,1,0,0,1': {'condition': "(input_b == 32'h55667788 && signal1)", 'action': "signal3 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,1']}, '1,1,0,0,0': {'condition': "!(input_b == 32'h55667788 && signal1)", 'action': '', 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0']}, '1,1,0,0,0,1': {'condition': "(input_a == 32'h99AABBCC && input_b == 32'hDDCCEEFF && signal2)", 'action': "signal1 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0', '1,1,0,0,0,1']}, '1,1,0,0,0,0': {'condition': "!(input_a == 32'h99AABBCC && input_b == 32'hDDCCEEFF && signal2)", 'action': "signal1 <= 1'b0;signal2 <= 1'b0;signal3 <= 1'b0;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0', '1,1,0,0,0,0']}}, {'2,1': {'condition': '', 'action': 'ctr_1 <= ctr;', 'block_path': ['2,1']}}, {'3,1': {'condition': '', 'action': 'ctr_2 <= ctr_1;', 'block_path': ['3,1']}}, {'4,1': {'condition': '', 'action': '', 'block_path': ['4,1']}, '4,1,1': {'condition': "(rst) == 1'b1", 'action': "ht_out <= 32'b0;", 'block_path': ['4,1', '4,1,1']}, '4,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['4,1', '4,1,0']}, '4,1,0,1': {'condition': "(ctr_2 == 32'h12345678)", 'action': '', 'block_path': ['4,1', '4,1,0', '4,1,0,1']}, '4,1,0,1,1': {'condition': "(trigger == 1'b1)", 'action': "ht_out <= {ht_out[30:0], ht_out[31] ^ 1'b1};", 'block_path': ['4,1', '4,1,0', '4,1,0,1', '4,1,0,1,1']}, '4,1,0,1,0': {'condition': "!(trigger == 1'b1)", 'action': 'ht_out <= {ht_out[30:0], ht_out[31]};', 'block_path': ['4,1', '4,1,0', '4,1,0,1', '4,1,0,1,0']}, '4,1,0,0': {'condition': "!(ctr_2 == 32'h12345678)", 'action': 'ht_out <= ht_out;', 'block_path': ['4,1', '4,1,0', '4,1,0,0']}}] 
     main()

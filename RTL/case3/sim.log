@@ -75,24 +75,28 @@ achieve node: 3,1
 achieve node: 2,1
 achieve node: 1,1
 achieve node: 1,1,0,0,0,0
+********Period          10********
 achieve node: 1,1
 achieve node: 1,1,0,1
 achieve node: 2,1
 achieve node: 3,1
 achieve node: 4,1
 achieve node: 4,1,0,0
+********Period          11********
 achieve node: 4,1
 achieve node: 4,1,0,0
 achieve node: 3,1
 achieve node: 2,1
 achieve node: 1,1
 achieve node: 1,1,0,0,0,1
+********Period          12********
 achieve node: 1,1
 achieve node: 1,1,0,0,1
 achieve node: 2,1
 achieve node: 3,1
 achieve node: 4,1
 achieve node: 4,1,0,0
+********Period          13********
 achieve node: 4,1
 achieve node: 4,1,0,1
 achieve node: 4,1,0,1,1
@@ -100,16 +104,18 @@ achieve node: 3,1
 achieve node: 2,1
 achieve node: 1,1
 achieve node: 1,1,0,0,0,0
+********Period          14********
 achieve node: 1,1
 achieve node: 1,1,0,0,0,0
 achieve node: 2,1
 achieve node: 3,1
 achieve node: 4,1
 achieve node: 4,1,0,0
+********Period          15********
 achieve node: 4,1
 achieve node: 4,1,0,0
 achieve node: 3,1
 achieve node: 2,1
 achieve node: 1,1
 achieve node: 1,1,0,0,0,0
-d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case3/case3_tb.v:79: $finish called at 170000 (1ps)
+d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case3/case3_tb.v:94: $finish called at 170000 (1ps)
