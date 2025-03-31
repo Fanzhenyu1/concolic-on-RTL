@@ -1,4 +1,5 @@
 import re
+import argparse
 
 def parse_defines(define_file):
     """ 解析 Verilog `define` 宏定义 """
@@ -144,7 +145,10 @@ def process_verilog_file(file_path):
     with open(file_path, 'w', encoding='utf-8') as f:
         f.write(modified_content)
 
-def main():
+def main(module_name):
+    # define_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/or1200_ICache/src/or1200_defines.v"  # 宏定义文件
+    verilog_file = f"d:/mylife_yanjiu/project/concolic_on_RTL/RTL/{module_name}/src/{module_name}.v"  # Verilog 源代码
+    output_file = f"d:/mylife_yanjiu/project/concolic_on_RTL/RTL/{module_name}/{module_name}_1.v"  # 处理后的输出文件
     # defines = parse_defines(define_file)
     # replace_macros(verilog_file, defines, output_file)    
     replace_verilog_parameters(verilog_file, output_file)
@@ -152,7 +156,24 @@ def main():
 
 
 if __name__ == "__main__":
-    # define_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/or1200_ICache/src/or1200_defines.v"  # 宏定义文件
-    verilog_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/case1.v"  # Verilog 源代码
-    output_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/case1_1.v"  # 处理后的输出文件
-    main()
+    # 创建参数解析器
+    parser = argparse.ArgumentParser(
+        description="Verilog Processor",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+    # 添加必须参数
+    parser.add_argument("module", 
+                      type=str,
+                      help="Name of the target Verilog module")
+    
+    # 可选参数示例
+    parser.add_argument("-o", "--output",
+                      default="_1",
+                      help="Output file suffix")
+    
+    # 解析参数
+    args = parser.parse_args()
+    
+    # 调用主函数
+    main(module_name=args.module)

@@ -29,7 +29,7 @@ def parse_verilog_new(verilog_file):
         r'^\s*(input|output|inout)\s*'        # 方向
         r'(?:wire|reg)?\s*'                   # 可选的 wire/reg
         r'(\[\s*(\d+)\s*:\s*(\d+)\s*\])?\s*'  # 可选的位宽定义
-        r'([\w,\s]+)\s*;',                    # 信号名
+        r'([\w,\s]+?)\s*(?=[,;)])',           # 信号名，后面紧跟 , 或 ; 或 )
         re.MULTILINE
     )
 
