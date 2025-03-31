@@ -1,5 +1,5 @@
 module case1 (
-    input wire [7:0] in_1,
+    input wire [7:0] in,
     output reg [7:0] out,
     input wire clk,
     input rst
@@ -9,18 +9,17 @@ module case1 (
   wire [3:0] st;
   wire [3:0] st2;
 
-  assign st  = state + 4'd2;
-
-  assign st2 = st;
+  assign st  = state + 4'd2;      // 0,0
+  assign st2 = st;          // 1,0
 
   always @(posedge clk) begin
     if (rst) begin
       state <= 4'h0;
-    end else if (in_1 == 8'h26) begin
+    end else if (in == 8'h26) begin
       state <= 4'h1;
-    end else if (in_1 == 8'hf5 && state == 4'h1) begin
+    end else if (in == 8'hf5 && state == 4'h1) begin
       state <= 4'h2;
-    end else if (in_1 == 8'h6e && state == 4'h2) begin
+    end else if (in == 8'h6e && state == 4'h2) begin
       state <= 4'h3;
     end else begin
       state <= 0;

@@ -1,47 +1,35 @@
-# Makefile for Verilog processing pipeline
+# 可调参数，默认case1
+CASE ?= case1
 
-# 用户可配置参数
-MODULE      := case1
-BASE_DIR    := /d/mylife_yanjiu/project/concolic_on_RTL/
-SRC_DIR     := $(BASE_DIR)/RTL/$(MODULE)/src/
-OUT_DIR     := $(BASE_DIR)/RTL/$(MODULE)/
+# 工程根目录（根据实际情况修改）
+RTL_DIR = /d/mylife_yanjiu/project/concolic_on_RTL/RTL
 
-# 文件路径定义
-ORIGINAL    := $(SRC_DIR)/$(MODULE).v
-PRE_PROC    := $(OUT_DIR)/$(MODULE)_1.v
-TB_GEN      := $(OUT_DIR)/$(MODULE)_tb.v
+# 原始Verilog文件目录（如果需要在pre_process.py中用到，可在脚本内部处理）
+SRC_DIR = $(RTL_DIR)/$(CASE)/src
 
-# 工具命令
-PYTHON      := python3
-MKDIR       := mkdir -p
+# 预处理生成的Verilog文件
+PRE_FILE = $(RTL_DIR)/$(CASE)/$(CASE)_1.v
 
-.PHONY: all clean help
+# tb生成器输出的文件
+TB_FILE = $(RTL_DIR)/$(CASE)/case1_tb.v
 
+CDFG_FILE = $(RTL_DIR)/$(CASE)/cdfg.txt
 
+# 默认目标：生成testbench
+all: $(TB_FILE) $(CDFG_FILE)
 
+# 运行pre_process.py，生成预处理后的Verilog文件
+$(PRE_FILE): pre_process.py
+	python pre_process.py $(CASE)
 
+# 使用预处理后的文件运行tb_generator.py，生成testbench文件
+$(TB_FILE): $(PRE_FILE) tb_generator.py
+	python tb_generator.py
 
+# 使用pre_process.py生成的文件后运行CDFG_1_1.py，并保存输出到CDFG_FILE
+$(CDFG_FILE): $(PRE_FILE) CDFG_1_1.py
+	python CDFG_1_1.py $(CASE) > $(CDFG_FILE)
+
+# 清理生成的文件
 clean:
-	@echo "cleaning..."
-	@if [ -d "$(OUT_DIR)" ]; then \
-		echo "Removing wave files..."; \
-		rm -rf "$(OUT_DIR)/wave"; \
-		echo "Deleting target files (excluding 'src/*.v')..."; \
-		find "$(OUT_DIR)" \
-			-type f \( -name '*.txt' -o -name '*.log' -o -name '*.vcd' \) -delete; \
-		find "$(OUT_DIR)" \
-			-type f -name '*.v' -not -path "$(OUT_DIR)/src/*/*.v" -delete; \
-		echo "Cleaning empty directories (except 'src')..."; \
-		find "$(OUT_DIR)" -type d -empty -not -path "$(OUT_DIR)/src" -not -path "$(OUT_DIR)/src/*" -delete; \
-		echo "clean finish!"; \
-	else \
-		echo "$(OUT_DIR) not exist, nothing to clean!"; \
-	fi
-
-
-help: ## 显示帮助信息
-	@echo "可用命令:"
-	@echo "  make [MODULE=name]   - 处理指定模块 (默认: case1)"
-	@echo "  make clean          - 清理生成文件"
-	@echo "  make help           - 显示此帮助"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
+	rm -f $(PRE_FILE) $(TB_FILE) $(CDFG_FILE)

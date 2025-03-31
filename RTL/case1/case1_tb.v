@@ -1,55 +1,45 @@
-//~ `New testbench
-`timescale  1ns / 1ps
+`timescale 1ns/1ps
+module case1_tb();
+reg [7:0] in;
+wire [7:0] out;
+reg clk;
+reg rst;
 
-module tb_case1();
+// 实例化待测模块
+case1 uut (
+    .in(in),
+    .out(out),
+    .clk(clk),
+    .rst(rst)
+    );
 
-// case1 Parameters
-parameter PERIOD  = 10;
-
-
-// case1 Inputs
-reg   [7:0]  in                            = 0 ;
-reg   clk                                  = 0 ;
-reg   rst                                  = 0 ;
-
-// case1 Outputs
-wire  [7:0]  out                           ;
-
-
-initial
-begin
-    forever #(PERIOD/2)  clk=~clk;
+// 时钟激励
+initial begin
+    clk = 0;
+    forever #5 clk = ~clk;
 end
 
-initial
-begin
-    #(PERIOD) rst  =  0;
+// 复位激励
+initial begin
+    rst = 1;
+    #20;
+    rst = 0;
 end
-
-case1  u_case1 (
-    .in                      ( in   [7:0] ),
-    .clk                     ( clk        ),
-    .rst                     ( rst        ),
-
-    .out                     ( out  [7:0] )
-);
 
 integer i;
 initial begin
     in = 0;
-    clk = 0;
     #10;
-    for(i = 0; i < 1000; i = i + 1) begin
+    for(i = 0; i < 100; i = i + 1) begin
         $display("********Period %d********", i);
         in = $random & 8'd255;
-        clk = $random & 1'd1;
         #10;
     end
     $finish;
 end
 initial begin
     $dumpfile("wave.vcd");
-    $dumpvars(0, tb_case1);
+    $dumpvars(0, case1_tb);
 end
 
 endmodule
