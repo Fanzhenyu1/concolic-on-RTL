@@ -7,6 +7,7 @@ import copy
 import time
 import psutil
 import gc
+import argparse
 
 
 def code_preprocess(flpath,file1):                  # 预处理verilog代码
@@ -404,10 +405,10 @@ def always_process(line, num):                             # 处理always块,lin
         str_always += line_list[i]
     return str_always
 
-def monitored_task():
+def monitored_task(module_name):
 
-    flpath = 'D:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/'
-    file1 = 'case1_1.v'
+    flpath = f'D:/mylife_yanjiu/project/concolic_on_RTL/RTL/{module_name}/'
+    file1 = f'{module_name}_1.v'
     file2 = file1.split('.')[0] + '_preprocessed.txt'
 
     with open(flpath + file2, 'r') as f:
@@ -420,11 +421,30 @@ def monitored_task():
     return 0
 
 
-def main():
+def main(module_name):
 
-    monitored_task()
+    monitored_task(module_name)
 
     return 0
 
 if __name__ == '__main__':
-    main()
+    # 创建参数解析器
+    parser = argparse.ArgumentParser(
+        description="CDFG Generator for Verilog HDL",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+    # 添加必须参数
+    parser.add_argument("module", 
+                      type=str,
+                      help="Name of the target Verilog module")
+    
+    # 可选参数示例
+    parser.add_argument("-o", "--output",
+                      default="_1_preprocessed.txt",
+                      help="Output file suffix")
+    
+    # 解析参数
+    args = parser.parse_args()
+
+    main(module_name=args.module)

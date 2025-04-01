@@ -3,6 +3,7 @@ import re
 import os, glob
 import sys
 import random
+import argparse
 import copy
 import time
 import psutil
@@ -383,7 +384,7 @@ def always_process(line, num):                             # 处理always块,lin
     pass
     return dict_block                                      # 返回字典类型
 
-def monitored_task():
+def monitored_task(module_name):
     # default语句处理存在bug，待修复
     # flpath = 'D:/mylife_yanjiu/project/concolic_on_RTL/RTL/core/clint/'
     # file1 = 'clint.v'
@@ -397,8 +398,8 @@ def monitored_task():
     # pre_code = code_preprocess(flpath,file1)        # 预处理verilog代码,输出list类型
     # cdfg_list, inout_port = main_process(pre_code)                          # 主体处理函数,输出list类型
 
-    flpath = 'D:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/'
-    file1 = 'case1_1.v'
+    flpath = f'D:/mylife_yanjiu/project/concolic_on_RTL/RTL/{module_name}/'
+    file1 = f'{module_name}_1.v'
     pre_code = code_preprocess(flpath,file1)        # 预处理verilog代码,输出list类型
     cdfg_list, inout_port = main_process(pre_code)                          # 主体处理函数,输出list类型
 
@@ -406,7 +407,7 @@ def monitored_task():
     return cdfg_list, inout_port
 
 
-def main():
+def main(module_name):
     # 垃圾回收
     for _ in range(3):
         gc.collect()
@@ -415,7 +416,7 @@ def main():
     monitor.ready_event.wait()
     start_time = time.time()
 
-    cdfg_list, inout_port = monitored_task()
+    cdfg_list, inout_port = monitored_task(module_name)
 
     monitor.stop()
     # monitor.join()
@@ -427,4 +428,23 @@ def main():
     return cdfg_list, inout_port
 
 if __name__ == '__main__':
-    main()
+    # 创建参数解析器
+    parser = argparse.ArgumentParser(
+        description="CDFG Generator for Verilog HDL",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+    # 添加必须参数
+    parser.add_argument("module", 
+                      type=str,
+                      help="Name of the target Verilog module")
+    
+    # 可选参数示例
+    parser.add_argument("-o", "--output",
+                      default="_1_preprocessed.txt",
+                      help="Output file suffix")
+    
+    # 解析参数
+    args = parser.parse_args()
+
+    main(module_name=args.module)
