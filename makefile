@@ -1,6 +1,11 @@
 # 可调参数，默认case1
 CASE := case1
 
+# 目标路径生成参数
+DEEP := 4
+TARGET_NODE := 3,1,0,1
+RESET := rst
+
 # 工程根目录（根据实际情况修改）
 RTL_DIR = /d/mylife_yanjiu/project/concolic_on_RTL/RTL
 
@@ -11,7 +16,7 @@ SRC_DIR = $(RTL_DIR)/$(CASE)/src
 PRE_FILE = $(RTL_DIR)/$(CASE)/$(CASE)_1.v
 
 # tb生成器输出的文件
-TB_FILE = $(RTL_DIR)/$(CASE)/case1_tb.v
+TB_FILE = $(RTL_DIR)/$(CASE)/$(CASE)_tb.v
 
 # CDFG生成的预处理文件
 CDFG_FILE = $(RTL_DIR)/$(CASE)/$(CASE)_1_preprocessed.txt
@@ -19,25 +24,51 @@ CDFG_FILE = $(RTL_DIR)/$(CASE)/$(CASE)_1_preprocessed.txt
 # 插桩实现生成的dut文件
 DUT_FILE = $(RTL_DIR)/$(CASE)/dut.v
 
+# sim命令生成的仿真文件
+VCD_FILE = $(RTL_DIR)/$(CASE)/wave.vcd
+WAVE_FILE = $(RTL_DIR)/$(CASE)/wave
+SIM_FILE = $(RTL_DIR)/$(CASE)/sim.log
+
+
 # 默认目标：生成testbench
 all: $(TB_FILE) $(DUT_FILE)
 
 # 运行pre_process.py，生成预处理后的Verilog文件
 $(PRE_FILE): pre_process.py
+	@echo "Generating $(CASE)_1.v ..."
 	python3 pre_process.py $(CASE)
+	@echo "generate $(CASE)_1.v finish."
 
 # 使用预处理后的文件运行tb_generator.py，生成testbench文件
 $(TB_FILE): $(PRE_FILE) tb_generator.py
+	@echo "Generating testbench..."
 	python3 tb_generator.py
+	@echo "generate $(CASE)_tb.v finish."
 
 # 使用pre_process.py生成的文件后运行CDFG_1_1.py，并保存输出到CDFG_FILE
 $(CDFG_FILE): $(PRE_FILE) CDFG_1_1.py
+	@echo "Generating CDFG..."
 	python3 CDFG_1_1.py $(CASE)
+	@echo "generate CDFG finish."
 
 # 使用CDFG_display_1.py生成dut.v
 $(DUT_FILE): $(CDFG_FILE) CDFG_display_1.py
+	@echo "Generating dut.v..."
 	python3 CDFG_display_1.py $(CASE)
+	@echo "generate dut.v finish."
+
+# 独立的 simulation 目标，执行 simulation.py
+sim: simulation.py
+	python3 simulation.py $(CASE)
+	@echo "Simulation finish."
+	@echo "Starting coverage analysis..."
+	python3 coverage.py $(CASE)
+	@echo "Coverage analysis finish."
+
+path: target_path_1_1.py
+	python3 target_path_1_1.py $(DEEP) $(TARGET_NODE) $(RESET)
+	@echo "Generate target path finish."
 
 # 清理生成的文件
 clean:
-	rm -f $(PRE_FILE) $(TB_FILE) $(CDFG_FILE) $(DUT_FILE)
+	rm -f $(PRE_FILE) $(TB_FILE) $(CDFG_FILE) $(DUT_FILE) $(VCD_FILE) $(WAVE_FILE) $(SIM_FILE)

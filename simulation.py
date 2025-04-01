@@ -1,6 +1,7 @@
 import subprocess
 import os
 import random
+import argparse
 import time
 import psutil
 import gc
@@ -39,13 +40,14 @@ class MemoryMonitor(Thread):
         self.join(timeout=1)
 
 # 主进程
-def main_process():
-    fl_path = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/"
+def main_process(module_name):
+
+    fl_path = f"d:/mylife_yanjiu/project/concolic_on_RTL/RTL/{module_name}/"
     # seed_value = random.randint(0, 4294967295)
     seed_value = 8
     commands = [
         # "cd d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/",  # 打开路径
-        f"iverilog -g2012 -o {fl_path}wave {fl_path}dut.v {fl_path}case1_tb.v",  # 第一条命令
+        f"iverilog -g2012 -o {fl_path}wave {fl_path}dut.v {fl_path}{module_name}_tb.v",  # 第一条命令
         f"vvp -n {fl_path}wave +SEED={seed_value} lxt2 > {fl_path}sim.log"                         # 第二条命令（假设需仿真）
         # ,"gtkwave wave.vcd"                         # 第三条命令（假设需查看波形）
     ]
@@ -63,7 +65,7 @@ def main_process():
         print("所有命令执行完毕！")
     return 0
 
-def main():
+def main(module_name):
 
     for _ in range(3):  # 重复执行3次
         gc.collect()
@@ -72,7 +74,7 @@ def main():
     monitor.ready_event.wait()
     start_time = time.time()
     
-    main_process()
+    main_process(module_name)
 
     end_time = time.time()
     monitor.stop()
@@ -82,4 +84,23 @@ def main():
     return 0
 
 if __name__ == '__main__':
-    main()
+    # 创建参数解析器
+    parser = argparse.ArgumentParser(
+        description="CDFG Generator for Verilog HDL",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+    # 添加必须参数
+    parser.add_argument("module", 
+                      type=str,
+                      help="Name of the target Verilog module")
+    
+    # 可选参数示例
+    parser.add_argument("-o", "--output",
+                      default="_1_preprocessed.txt",
+                      help="Output file suffix")
+    
+    # 解析参数
+    args = parser.parse_args()
+
+    main(module_name=args.module)

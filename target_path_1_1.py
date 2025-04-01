@@ -1,6 +1,7 @@
 from math import *
 import re
 import os, glob
+import argparse
 import sys
 import random
 import copy
@@ -343,7 +344,7 @@ def CDFG_inout_generate(list_CDFG, reset_name):
     # print(list_inout)                             # 输出模块所有输入输出信号列表
     return dict_CDFG_inout
 
-def main_1(target_node_list, dict_CDFG_inout):
+def main_1(target_node_list, dict_CDFG_inout, reset_name):
 
     # 全局变量
     global num_all
@@ -352,7 +353,6 @@ def main_1(target_node_list, dict_CDFG_inout):
     global path_list
     global constraint_stack
     global flag
-    global reset_name
 
     for i in range(len(target_node_list)):
         num_start = target_node_list[i][1]
@@ -377,14 +377,13 @@ def main_1(target_node_list, dict_CDFG_inout):
 
     return path_list
 
-def main():
+def main(deep, target_node, reset_name):
     # 全局变量
     global num_all
     global num_apt
     global path_list
     global constraint_stack
     global flag
-    global reset_name
     global node_selected
     # 加强版垃圾回收
     for _ in range(3):
@@ -402,9 +401,9 @@ def main():
     target_node_list.append([target_node, num_start])             # 定义目标节点堆栈，第一个目标节点入栈
     node_selected.append(target_node)
 
-    for i in range(4):          # 手动定义路径搜寻深度
+    for i in range(deep):          # 手动定义路径搜寻深度
         print(f"已选择目标节点:{node_selected}")
-        path_list = main_1(target_node_list, dict_CDFG_inout)
+        path_list = main_1(target_node_list, dict_CDFG_inout, reset_name)
         print(f"第{i+1}次搜索结果：{path_list}")
         target_node_list = []
         for j in range(len(path_list)):
@@ -438,7 +437,7 @@ def main():
 
 list_CDFG = [{'0,0': {'condition': '', 'action': 'trigger = signal1 & signal2 & signal3;', 'block_path': ['0,0']}}, {'1,1': {'condition': '', 'action': '', 'block_path': ['1,1']}, '1,1,1': {'condition': "(rst) == 1'b1", 'action': "signal1 <= 1'b0;signal2 <= 1'b0;signal3 <= 1'b0;", 'block_path': ['1,1', '1,1,1']}, '1,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['1,1', '1,1,0']}, '1,1,0,1': {'condition': "(input_a == 32'h11223344)", 'action': "signal2 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,1']}, '1,1,0,0': {'condition': "!(input_a == 32'h11223344)", 'action': '', 'block_path': ['1,1', '1,1,0', '1,1,0,0']}, '1,1,0,0,1': {'condition': "(input_b == 32'h55667788 && signal1)", 'action': "signal3 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,1']}, '1,1,0,0,0': {'condition': "!(input_b == 32'h55667788 && signal1)", 'action': '', 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0']}, '1,1,0,0,0,1': {'condition': "(input_a == 32'h99AABBCC && input_b == 32'hDDCCEEFF && signal2)", 'action': "signal1 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0', '1,1,0,0,0,1']}, '1,1,0,0,0,0': {'condition': "!(input_a == 32'h99AABBCC && input_b == 32'hDDCCEEFF && signal2)", 'action': "signal1 <= 1'b0;signal2 <= 1'b0;signal3 <= 1'b0;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0', '1,1,0,0,0,0']}}, {'2,1': {'condition': '', 'action': 'ctr_1 <= ctr;', 'block_path': ['2,1']}}, {'3,1': {'condition': '', 'action': 'ctr_2 <= ctr_1;', 'block_path': ['3,1']}}, {'4,1': {'condition': '', 'action': '', 'block_path': ['4,1']}, '4,1,1': {'condition': "(rst) == 1'b1", 'action': "ht_out <= 32'b0;", 'block_path': ['4,1', '4,1,1']}, '4,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['4,1', '4,1,0']}, '4,1,0,1': {'condition': "(ctr_2 == 32'h12345678)", 'action': '', 'block_path': ['4,1', '4,1,0', '4,1,0,1']}, '4,1,0,1,1': {'condition': "(trigger == 1'b1)", 'action': "ht_out <= {ht_out[30:0], ht_out[31] ^ 1'b1};", 'block_path': ['4,1', '4,1,0', '4,1,0,1', '4,1,0,1,1']}, '4,1,0,1,0': {'condition': "!(trigger == 1'b1)", 'action': 'ht_out <= {ht_out[30:0], ht_out[31]};', 'block_path': ['4,1', '4,1,0', '4,1,0,1', '4,1,0,1,0']}, '4,1,0,0': {'condition': "!(ctr_2 == 32'h12345678)", 'action': 'ht_out <= ht_out;', 'block_path': ['4,1', '4,1,0', '4,1,0,0']}}]
 
-list_CDFG = [{'0,0': {'condition': '', 'action': "st = state + 4'd2;", 'block_path': ['0,0']}}, {'1,0': {'condition': '', 'action': 'st2 = st;', 'block_path': ['1,0']}}, {'2,1': {'condition': '', 'action': '', 'block_path': ['2,1']}, '2,1,1': {'condition': "(rst) == 1'b1", 'action': "state <= 4'h0;", 'block_path': ['2,1', '2,1,1']}, '2,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['2,1', '2,1,0']}, '2,1,0,1': {'condition': "(in_1 == 8'h26)", 'action': "state <= 4'h1;", 'block_path': ['2,1', '2,1,0', '2,1,0,1']}, '2,1,0,0': {'condition': "!(in_1 == 8'h26)", 'action': '', 'block_path': ['2,1', '2,1,0', '2,1,0,0']}, '2,1,0,0,1': {'condition': "(in_1 == 8'hf5 && state == 4'h1)", 'action': "state <= 4'h2;", 'block_path': ['2,1', '2,1,0', '2,1,0,0', '2,1,0,0,1']}, '2,1,0,0,0': {'condition': "!(in_1 == 8'hf5 && state == 4'h1)", 'action': '', 'block_path': ['2,1', '2,1,0', '2,1,0,0', '2,1,0,0,0']}, '2,1,0,0,0,1': {'condition': "(in_1 == 8'h6e && state == 4'h2)", 'action': "state <= 4'h3;", 'block_path': ['2,1', '2,1,0', '2,1,0,0', '2,1,0,0,0', '2,1,0,0,0,1']}, '2,1,0,0,0,0': {'condition': "!(in_1 == 8'h6e && state == 4'h2)", 'action': 'state <= 0;', 'block_path': ['2,1', '2,1,0', '2,1,0,0', '2,1,0,0,0', '2,1,0,0,0,0']}}, {'3,1': {'condition': '', 'action': '', 'block_path': ['3,1']}, '3,1,1': {'condition': "(rst) == 1'b1", 'action': "out <= 8'b0;", 'block_path': ['3,1', '3,1,1']}, '3,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['3,1', '3,1,0']}, '3,1,0,1': {'condition': "(st2 == 4'h5)", 'action': 'out <= 1;', 'block_path': ['3,1', '3,1,0', '3,1,0,1']}}]
+list_CDFG = [{'0,0': {'condition': '', 'action': "st = state + 4'h2;", 'block_path': ['0,0']}}, {'1,0': {'condition': '', 'action': 'st2 = st;', 'block_path': ['1,0']}}, {'2,1': {'condition': '', 'action': '', 'block_path': ['2,1']}, '2,1,1': {'condition': "(rst) == 1'b1", 'action': "state <= 4'h0;", 'block_path': ['2,1', '2,1,1']}, '2,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['2,1', '2,1,0']}, '2,1,0,1': {'condition': "(in_1 == 8'h26)", 'action': "state <= 4'h1;", 'block_path': ['2,1', '2,1,0', '2,1,0,1']}, '2,1,0,0': {'condition': "!(in_1 == 8'h26)", 'action': '', 'block_path': ['2,1', '2,1,0', '2,1,0,0']}, '2,1,0,0,1': {'condition': "(in_1 == 8'hf5 && state == 4'h1)", 'action': "state <= 4'h2;", 'block_path': ['2,1', '2,1,0', '2,1,0,0', '2,1,0,0,1']}, '2,1,0,0,0': {'condition': "!(in_1 == 8'hf5 && state == 4'h1)", 'action': '', 'block_path': ['2,1', '2,1,0', '2,1,0,0', '2,1,0,0,0']}, '2,1,0,0,0,1': {'condition': "(in_1 == 8'h6e && state == 4'h2)", 'action': "state <= 4'h3;", 'block_path': ['2,1', '2,1,0', '2,1,0,0', '2,1,0,0,0', '2,1,0,0,0,1']}, '2,1,0,0,0,0': {'condition': "!(in_1 == 8'h6e && state == 4'h2)", 'action': "state <= 4'h0;", 'block_path': ['2,1', '2,1,0', '2,1,0,0', '2,1,0,0,0', '2,1,0,0,0,0']}}, {'3,1': {'condition': '', 'action': '', 'block_path': ['3,1']}, '3,1,1': {'condition': "(rst) == 1'b1", 'action': "out <= 8'b0;", 'block_path': ['3,1', '3,1,1']}, '3,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['3,1', '3,1,0']}, '3,1,0,1': {'condition': "(st2 == 4'h5)", 'action': 'out <= 1;', 'block_path': ['3,1', '3,1,0', '3,1,0,1']}}]
 if __name__ == '__main__':
     # list_CDFG, list_inout = CDFG_1_1.main()
     signal_pattern = r'(?<!\')\b[a-zA-Z_]\w*\b'             # 匹配信号，但排除以单引号开头的数字常量
@@ -578,6 +577,30 @@ if __name__ == '__main__':
     # i_rx_phy_se0_s = BitVec('i_rx_phy_se0_s', 1)
     # i_rx_phy_fs_ce_r1 = BitVec('i_rx_phy_fs_ce_r1', 1)
     # i_rx_phy_fs_ce_r2 = BitVec('i_rx_phy_fs_ce_r2', 1)
+
+    # 创建参数解析器
+    parser = argparse.ArgumentParser(
+        description='自动化参数配置工具',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+    # 添加参数定义
+    parser.add_argument('deep', type=int, default=1,
+                      help='遍历深度级别 (必须 ≥1)')
+    parser.add_argument('target_node', type=str, default='0,0',
+                      help='目标节点坐标，格式为逗号分隔字符串')
+    parser.add_argument('reset_name', type=str, default='rst',
+                      help='复位信号名称')
+    
+    # 解析参数
+    args = parser.parse_args()
+    # 参数验证
+    if args.deep < 1:
+        raise ValueError("遍历深度必须 ≥1")
+    if not all(part.isdigit() for part in args.target_node.split(',')):
+        raise ValueError("目标节点坐标必须为数字逗号分隔格式")
+
+
     # 定义全局变量，用于体现路径约减的效果
     num_all = 0
     num_apt = 0
@@ -585,11 +608,10 @@ if __name__ == '__main__':
     constraint_stack = []
     flag = 0  # 用于控制路径搜索的回溯
 
-    target_node = '3,1,0,1'
-    num_start = 0  # 起始优先级
-    # 输入reset信号名
-    # reset_name = input('请输入reset信号名：')
-    reset_name = 'rst'
+    deep = args.deep
+    target_node = args.target_node
+    reset_name = args.reset_name
+    num_start = 0  # 起始优先级    
     node_selected = []  # 用于记录以选择过的目标节点
-    main()
+    main(deep, target_node, reset_name)
     pass

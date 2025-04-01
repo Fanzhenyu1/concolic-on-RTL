@@ -1,5 +1,43 @@
 import re
 from z3 import *
+
+def parse_add_sub(condition, in_comparison):
+    """
+    处理包含 '+' 或 '-' 的表达式，避免无限递归。
+    按照从左到右的顺序进行解析，构造出正确的加/减运算表达式。
+    """
+    # 利用 re.split 分割出操作数和运算符，同时去除空项
+    tokens = [t.strip() for t in re.split(r'([+-])', condition) if t.strip() != '']
+    # 对每个 token，如果是运算符，则保留；否则递归解析
+    parsed_tokens = []
+    for token in tokens:
+        if token in ['+', '-']:
+            parsed_tokens.append(token)
+        else:
+            parsed_tokens.append(parse_condition(token, in_comparison))
+    # 按照从左到右的顺序组合表达式
+    if in_comparison:
+        expr = parsed_tokens[0]
+        i = 1
+        while i < len(parsed_tokens):
+            op = parsed_tokens[i]
+            right = parsed_tokens[i+1]
+            expr = f"({expr} {op} {right})"
+            i += 2
+        return expr
+    else:
+        expr = parsed_tokens[0]
+        i = 1
+        while i < len(parsed_tokens):
+            op = parsed_tokens[i]
+            right = parsed_tokens[i+1]
+            if op == '+':
+                expr = f"Plus({expr}, {right})"
+            else:
+                expr = f"Minus({expr}, {right})"
+            i += 2
+        return expr
+    
 def parse_verilog_const(const_str, in_comparison=False):
     """
     将 Verilog 常量转换为对应的表达式。
@@ -207,6 +245,13 @@ def parse_condition(condition, in_comparison=False):
     #     else:
     #         return f"Or({', '.join(parsed_parts)})"
     
+    # 先处理加法和减法，避免后续正则匹配遗漏
+    if '+' in condition or '-' in condition:
+        # 注意：只有当 '+' 或 '-' 是顶层运算符时才处理
+        # 检查顶层（利用 split_top_level 也可以，但这里简单处理）
+        # 若条件中含有加减运算符，则调用专用函数解析
+        return parse_add_sub(condition, in_comparison)
+
     # 处理常量：纯数字或包含单引号的常量
     if re.match(r'^\d+$', condition) or ("'" in condition):
         return parse_verilog_const(condition, in_comparison)
@@ -330,7 +375,7 @@ def main_z3_solver(constraint_stack, signal_inout, signal_midle):
 
 # Example usage
 # constraint_stack1 = ["r_in == 6'b101010", "a <= r_in;", "b < a & 6'b100100", "b <= 6'b100110"]
-constraint_stack2 = ["st  = state + 4'd2;"]
+constraint_stack2 = ["(st2 == 4'h5)", 'st2 = st;', "st = state + 4'h2;", "state <= 4'h0;"]
 
 
 # rst = BitVec('rst', 1)

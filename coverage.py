@@ -1,6 +1,7 @@
 import re
+import argparse
 
-def node_dut():
+def node_dut(flpath, flname_dut):
     ## 打开display文件
     with open(flpath + flname_dut, 'r') as f:
         code = f.read()
@@ -16,7 +17,7 @@ def node_dut():
     # print("node_num:", node_all)
     return nodes, node_all
 
-def node_sim():
+def node_sim(flpath, flname_sim):
     ## 打开log文件
     with open(flpath + flname_sim, 'r') as f:
         code = f.read()
@@ -31,13 +32,18 @@ def node_sim():
     # print("node_get:", node_get)
     return nodes, node_get
 
-def main():
+def main(module_name):
+    # 定义文件路径
+    flpath = f"D:/mylife_yanjiu/project/concolic_on_RTL/RTL/{module_name}/"
+    flname_dut = "dut.v"
+    flname_sim = "sim.log"
+
     # node_miss_old = ['69,1,0,1', '60,1,0,1', '32,0,3,1,1', '60,1,0,0,1', '59,0,1,6', '59,0,1,5,0', '59,0,1,8', '59,0,1,6,1', '59,0,1,5', '59,0,1,5,1', '69,1,0,0,1', '59,0,1,6,0', '59,0,1,8,1', '59,0,1,4', '59,0,1,7,0', '64,1,0,0,1,1', '59,0,1,7', '59,0,1,7,1', '59,0,1,4,1', '59,0,1,6,0,1', '59,0,1,6,0,0', '67,1,1', '61,1,1', '63,1,0,0', '63,1,0,0,1']
     node_miss_old = ['2,1,1', '3,1,0,1', '2,1,0,0,1', '3,1,1', '2,1,0,0,0,1']
 
     # 计算覆盖率
-    l_nodes_all, node_all = node_dut()
-    l_nodes_get, node_get = node_sim()
+    l_nodes_all, node_all = node_dut(flpath, flname_dut)
+    l_nodes_get, node_get = node_sim(flpath, flname_sim)
     coverage = node_get / node_all
     print("coverage:", coverage)
 
@@ -56,9 +62,24 @@ def main():
     return 0
 
 if __name__ == '__main__':
-    # 定义文件路径
-    flpath = "D:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/"
-    flname_dut = "dut.v"
-    flname_sim = "sim.log"
-    main()
+    # 创建参数解析器
+    parser = argparse.ArgumentParser(
+        description="CDFG Generator for Verilog HDL",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+    # 添加必须参数
+    parser.add_argument("module", 
+                      type=str,
+                      help="Name of the target Verilog module")
+    
+    # 可选参数示例
+    parser.add_argument("-o", "--output",
+                      default="_1_preprocessed.txt",
+                      help="Output file suffix")
+    
+    # 解析参数
+    args = parser.parse_args()
+
+    main(module_name=args.module)
     

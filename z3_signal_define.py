@@ -1,6 +1,6 @@
-# signal_inout = {'in': 8, 'clk': 1, 'rst': 1, 'out': 8, 'state': 4, 'st': 4, 'st2': 4}
-signal_inout = {'clk':1, 'W_in':1, 'A_in':1, 'sensor':1, 'motor':1, 'next_state':2, 'state':2} 
+# signal_inout = {'clk':1, 'W_in':1, 'A_in':1, 'sensor':1, 'motor':1, 'next_state':2, 'state':2} 
 import re
+import argparse
 def parse_verilog_signals(verilog_file):
     """ 解析 Verilog 信号定义，并转换为 Python 字典 """
     signal_inout = {}
@@ -82,9 +82,8 @@ def get_z3_code(signal_inout):
         z3_code += f"    {signal_name} = BitVec('{signal_name}', {bit_width})\n"
     return z3_code
 
-if __name__ == "__main__":
-    # verilog_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/core/clint/clint.v"  # Verilog 源代码
-    verilog_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/case1_1.v"  # Verilog 源代码
+def main(module_name):
+    verilog_file = f"d:/mylife_yanjiu/project/concolic_on_RTL/RTL/{module_name}/{module_name}_1.v"  # Verilog 源代码
     signals = parse_verilog_signals(verilog_file)
     print(signals)
     print("自动生成的 Z3Py 代码：\n")
@@ -93,3 +92,26 @@ if __name__ == "__main__":
     # 新版解析Verilog信号定义
     signals_new = parse_verilog_new(verilog_file)
     print(signals_new)
+
+if __name__ == "__main__":
+    # 创建参数解析器
+    parser = argparse.ArgumentParser(
+        description="Verilog Processor",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+    # 添加必须参数
+    parser.add_argument("module", 
+                      type=str,
+                      help="Name of the target Verilog module")
+    
+    # 可选参数示例
+    parser.add_argument("-o", "--output",
+                      default="_1",
+                      help="Output file suffix")
+    
+    # 解析参数
+    args = parser.parse_args()
+    
+    # 调用主函数
+    main(module_name=args.module)
