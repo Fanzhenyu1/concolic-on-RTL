@@ -40,11 +40,10 @@ class MemoryMonitor(Thread):
         self.join(timeout=1)
 
 # 主进程
-def main_process(module_name):
+def main_process(module_name, seed_value=0):
 
     fl_path = f"d:/mylife_yanjiu/project/concolic_on_RTL/RTL/{module_name}/"
     # seed_value = random.randint(0, 4294967295)
-    seed_value = 8
     commands = [
         # "cd d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/",  # 打开路径
         f"iverilog -g2012 -o {fl_path}wave {fl_path}dut.v {fl_path}{module_name}_tb.v",  # 第一条命令
@@ -65,7 +64,7 @@ def main_process(module_name):
         print("所有命令执行完毕！")
     return 0
 
-def main(module_name):
+def main(module_name, seed_value):
 
     for _ in range(3):  # 重复执行3次
         gc.collect()
@@ -74,7 +73,7 @@ def main(module_name):
     monitor.ready_event.wait()
     start_time = time.time()
     
-    main_process(module_name)
+    main_process(module_name, seed_value)
 
     end_time = time.time()
     monitor.stop()
@@ -94,6 +93,9 @@ if __name__ == '__main__':
     parser.add_argument("module", 
                       type=str,
                       help="Name of the target Verilog module")
+    parser.add_argument("seed", 
+                      type=int,
+                      help="Value of the random seed")    
     
     # 可选参数示例
     parser.add_argument("-o", "--output",
@@ -103,4 +105,4 @@ if __name__ == '__main__':
     # 解析参数
     args = parser.parse_args()
 
-    main(module_name=args.module)
+    main(module_name=args.module, seed_value=args.seed)

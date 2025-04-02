@@ -1,6 +1,7 @@
 import re
 import sys
 import os
+import argparse
 from z3_signal_define import parse_verilog_new
 
 def parse_inputs(file_contents):
@@ -154,7 +155,7 @@ def generate_tb(signal_dict, module_name):
     tb_lines.append("\n// 复位激励\n")
     tb_lines.append("initial begin\n")
     tb_lines.append("    {} = 1;\n".format(rst_name))
-    tb_lines.append("    #20;\n")
+    tb_lines.append("    #10;\n")
     tb_lines.append("    {} = 0;\n".format(rst_name))
     tb_lines.append("end\n")
     
@@ -187,12 +188,35 @@ def main():
         sys.exit(1)
 
     generate_tb(signals_new, module_name)
-    generate_random_stimulus(inputs)
+    generate_random_stimulus(inputs, num_cycles)
     print("已完成testbench生成！\n")
 
 if __name__ == '__main__':
-    module_name = "case1"
-    num_cycles = 100
+    # 创建参数解析器
+    parser = argparse.ArgumentParser(
+        description="Verilog Processor",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+    # 添加必须参数
+    parser.add_argument("module", 
+                      type=str,
+                      help="Name of the target Verilog module")
+    parser.add_argument("cycles", 
+                      type=int,
+                      help="Number of cycles to run the testbench")    
+    
+    # 可选参数示例
+    parser.add_argument("-o", "--output",
+                      default="_1",
+                      help="Output file suffix")
+    
+    # 解析参数
+    args = parser.parse_args()
+
+    module_name = args.module
+
+    num_cycles = args.cycles
     fl_path = f"d:/mylife_yanjiu/project/concolic_on_RTL/RTL/{module_name}/"
     filename = fl_path + f"{module_name}_1.v"
     signals_new = parse_verilog_new(filename)

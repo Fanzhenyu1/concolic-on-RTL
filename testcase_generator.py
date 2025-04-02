@@ -232,37 +232,36 @@ def constraint_build_solver(log_path=None):
     # 周期0约束
     automator.add_verilog_constraints(
         cycle=0,
-        verilog_conditions=[CDFG_dict['1,1,0,1']['condition']],
+        verilog_conditions=[CDFG_dict['2,1,0,1']['condition']],
         verilog_assignments=[
-            CDFG_dict['1,1,0,1']['action']
+            CDFG_dict['2,1,0,1']['action']
         ]
     )
 
     # 周期1约束
     automator.add_verilog_constraints(
         cycle=1,
-        verilog_conditions=[CDFG_dict['1,1,0,0,0,1']['condition']],
+        verilog_conditions=[CDFG_dict['2,1,0,0,1']['condition']],
         verilog_assignments=[
-            CDFG_dict['1,1,0,0,0,1']['action'],
-            CDFG_dict['2,1']['action']
+            CDFG_dict['2,1,0,0,1']['action']
         ]
     )
 
     # 周期2约束
     automator.add_verilog_constraints(
         cycle=2,
-        verilog_conditions=[CDFG_dict['1,1,0,0,1']['condition']],
+        verilog_conditions=[CDFG_dict['2,1,0,0,0,1']['condition']],
         verilog_assignments=[
-            CDFG_dict['1,1,0,0,1']['action'],
+            CDFG_dict['2,1,0,0,0,1']['action'],
             CDFG_dict['0,0']['action'],
-            CDFG_dict['3,1']['action']
+            CDFG_dict['1,0']['action']
         ]
     )
 
     # 周期3约束
     automator.add_verilog_constraints(
         cycle=3,
-        verilog_conditions=[CDFG_dict['4,1,0,1,1']['condition'], CDFG_dict['4,1,0,1']['condition']],
+        verilog_conditions=[CDFG_dict['3,1,0,1']['condition']],
         verilog_assignments=[
 
         ]
@@ -335,7 +334,7 @@ def constraint_build_solver(log_path=None):
     else:
         print("无解！约束存在冲突")
 
-def log_to_config(log_path, target_signals=['input_a', 'input_b', 'ctr']):
+def log_to_config(log_path, target_signals=['in']):
     signal_pattern = re.compile(
         r'^(?P<signal>\w+)\s*=\s*(?P<value>\S+).*?\((?P<comment>[^)]+)\)$'
     )
@@ -420,32 +419,32 @@ def main():
     path_config = [
         {
             'cycle': 0,
-            'condition_keys': ['1,1,0,1'],
-            'action_keys': ['1,1,0,1']
+            'condition_keys': ['2,1,0,1'],
+            'action_keys': ['2,1,0,1']
         },        
         {
             'cycle': 1,
-            'condition_keys': ['1,1,0,0,0,1'],
-            'action_keys': ['1,1,0,0,0,1', '2,1']
+            'condition_keys': ['2,1,0,0,1'],
+            'action_keys': ['2,1,0,0,1']
         },        
         {
             'cycle': 2,
-            'condition_keys': ['1,1,0,0,1'],
-            'action_keys': ['1,1,0,0,1', '0,0', '3,1']
+            'condition_keys': ['2,1,0,0,0,1'],
+            'action_keys': ['2,1,0,0,0,1', '0,0', '1,0']
         },
         {
             'cycle': 3,
-            'condition_keys': ['4,1,0,1,1', '4,1,0,1'],
+            'condition_keys': ['3,1,0,1'],
             'action_keys': []
         }
     ]
     # 约束代码生成
-    # generated_code = generate_constraints_code(path_config)
-    # print(generated_code)
+    generated_code = generate_constraints_code(path_config)
+    print(generated_code)
 
-    log_path="./RTL/case3/constraint_solve.log"
+    log_path="./RTL/case1/constraint_solve.log"
     # # 约束建立&求解
-    # constraint_build_solver(log_path)
+    constraint_build_solver(log_path)
 
     sim_config = log_to_config(log_path)
     print(sim_config)
@@ -469,7 +468,7 @@ if __name__ == "__main__":
     clk_name = 'clk'
     rst_name = 'rst'
 
-    signal_def = {'clk': (1, 1), 'rst': (1, 1), 'input_a': (1, 32), 'input_b': (1, 32), 'ctr': (1, 32), 'ht_out': (3, 32), 'signal1': (2, 1), 'signal2': (2, 1), 'signal3': (2, 1), 'ctr_1': (2, 32), 'ctr_2': (2, 32), 'trigger': (2, 1)}
+    signal_def = {'in': (1, 8), 'out': (3, 8), 'clk': (1, 1), 'rst': (1, 1), 'state': (2, 4), 'st': (2, 4), 'st2': (2, 4)}
 
-    CDFG_list = [{'0,0': {'condition': '', 'action': 'trigger = signal1 & signal2 & signal3;', 'block_path': ['0,0']}}, {'1,1': {'condition': '', 'action': '', 'block_path': ['1,1']}, '1,1,1': {'condition': "(rst) == 1'b1", 'action': "signal1 <= 1'b0;signal2 <= 1'b0;signal3 <= 1'b0;", 'block_path': ['1,1', '1,1,1']}, '1,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['1,1', '1,1,0']}, '1,1,0,1': {'condition': "(input_a == 32'h11223344)", 'action': "signal2 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,1']}, '1,1,0,0': {'condition': "!(input_a == 32'h11223344)", 'action': '', 'block_path': ['1,1', '1,1,0', '1,1,0,0']}, '1,1,0,0,1': {'condition': "(input_b == 32'h55667788 && signal1)", 'action': "signal3 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,1']}, '1,1,0,0,0': {'condition': "!(input_b == 32'h55667788 && signal1)", 'action': '', 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0']}, '1,1,0,0,0,1': {'condition': "(input_a == 32'h99AABBCC && input_b == 32'hDDCCEEFF && signal2)", 'action': "signal1 <= 1'b1;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0', '1,1,0,0,0,1']}, '1,1,0,0,0,0': {'condition': "!(input_a == 32'h99AABBCC && input_b == 32'hDDCCEEFF && signal2)", 'action': "signal1 <= 1'b0;signal2 <= 1'b0;signal3 <= 1'b0;", 'block_path': ['1,1', '1,1,0', '1,1,0,0', '1,1,0,0,0', '1,1,0,0,0,0']}}, {'2,1': {'condition': '', 'action': 'ctr_1 <= ctr;', 'block_path': ['2,1']}}, {'3,1': {'condition': '', 'action': 'ctr_2 <= ctr_1;', 'block_path': ['3,1']}}, {'4,1': {'condition': '', 'action': '', 'block_path': ['4,1']}, '4,1,1': {'condition': "(rst) == 1'b1", 'action': "ht_out <= 32'b0;", 'block_path': ['4,1', '4,1,1']}, '4,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['4,1', '4,1,0']}, '4,1,0,1': {'condition': "(ctr_2 == 32'h12345678)", 'action': '', 'block_path': ['4,1', '4,1,0', '4,1,0,1']}, '4,1,0,1,1': {'condition': "(trigger == 1'b1)", 'action': "ht_out <= {ht_out[30:0], ht_out[31] ^ 1'b1};", 'block_path': ['4,1', '4,1,0', '4,1,0,1', '4,1,0,1,1']}, '4,1,0,1,0': {'condition': "!(trigger == 1'b1)", 'action': 'ht_out <= {ht_out[30:0], ht_out[31]};', 'block_path': ['4,1', '4,1,0', '4,1,0,1', '4,1,0,1,0']}, '4,1,0,0': {'condition': "!(ctr_2 == 32'h12345678)", 'action': 'ht_out <= ht_out;', 'block_path': ['4,1', '4,1,0', '4,1,0,0']}}] 
+    CDFG_list = [{'0,0': {'condition': '', 'action': "st = state + 4'd2;", 'block_path': ['0,0']}}, {'1,0': {'condition': '', 'action': 'st2 = st;', 'block_path': ['1,0']}}, {'2,1': {'condition': '', 'action': '', 'block_path': ['2,1']}, '2,1,1': {'condition': "(rst) == 1'b1", 'action': "state <= 4'h0;", 'block_path': ['2,1', '2,1,1']}, '2,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['2,1', '2,1,0']}, '2,1,0,1': {'condition': "(in == 8'h26)", 'action': "state <= 4'h1;", 'block_path': ['2,1', '2,1,0', '2,1,0,1']}, '2,1,0,0': {'condition': "!(in == 8'h26)", 'action': '', 'block_path': ['2,1', '2,1,0', '2,1,0,0']}, '2,1,0,0,1': {'condition': "(in == 8'hf5 && state == 4'h1)", 'action': "state <= 4'h2;", 'block_path': ['2,1', '2,1,0', '2,1,0,0', '2,1,0,0,1']}, '2,1,0,0,0': {'condition': "!(in == 8'hf5 && state == 4'h1)", 'action': '', 'block_path': ['2,1', '2,1,0', '2,1,0,0', '2,1,0,0,0']}, '2,1,0,0,0,1': {'condition': "(in == 8'h6e && state == 4'h2)", 'action': "state <= 4'h3;", 'block_path': ['2,1', '2,1,0', '2,1,0,0', '2,1,0,0,0', '2,1,0,0,0,1']}, '2,1,0,0,0,0': {'condition': "!(in == 8'h6e && state == 4'h2)", 'action': "state <= 4'h0;", 'block_path': ['2,1', '2,1,0', '2,1,0,0', '2,1,0,0,0', '2,1,0,0,0,0']}}, {'3,1': {'condition': '', 'action': '', 'block_path': ['3,1']}, '3,1,1': {'condition': "(rst) == 1'b1", 'action': "out <= 8'b0;", 'block_path': ['3,1', '3,1,1']}, '3,1,0': {'condition': "!(rst) == 1'b1", 'action': '', 'block_path': ['3,1', '3,1,0']}, '3,1,0,1': {'condition': "(st2 == 4'h5)", 'action': 'out <= 1;', 'block_path': ['3,1', '3,1,0', '3,1,0,1']}}]
     main()

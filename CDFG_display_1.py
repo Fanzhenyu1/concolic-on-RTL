@@ -138,7 +138,7 @@ def else_process(str_1):                  # 处理else语句
         stack_condition.pop()
         stack_condition.append(block)
     pass
-    str_line = str_1 + f" $display(\"achieve node: {block}\");"
+    str_line = str_1 + f" $display(\"achieve node: {block}\"); "
     return str_line
 
 def else_process_1(str_1):                  # 处理else语句
@@ -160,7 +160,7 @@ def else_process_1(str_1):                  # 处理else语句
         stack_condition.append(block)
     action = str_1.replace('else', '').replace('end', '').strip()
 
-    str_line = str_1.split('else')[0].strip() + ' else begin ' + f" $display(\"achieve node: {block}\");" + action + ' end '
+    str_line = ' ' + str_1.split('else')[0].strip() + ' else begin ' + f" $display(\"achieve node: {block}\");" + action + ' end '
     pass
     return str_line
 
@@ -241,7 +241,7 @@ def else_if_process_1(str):               # 处理else if语句
                 condition = str_m[0:j+1].strip()
                 action = str_m[j+1:].strip()
                 break
-    str_list = str.split('else')[0].strip() + f" else if {condition} begin " + f" $display(\"achieve node: {block}\");" + action + ' end'
+    str_list = ' ' + str.split('else')[0].strip() + f" else if {condition} begin " + f" $display(\"achieve node: {block}\");" + action + ' end'
     return str_list
 
 def else_if_process_2(str):               # 处理else if语句
@@ -309,7 +309,7 @@ def always_process(line, num):                             # 处理always块,lin
                     line_list[i] = if_process_1(line_list[i])
                 else:
                     if_process_2(line_list[i])
-                    line_list[i+1] = ' begin ' + line_list[i+1] + f"$display(\"achieve node: {block}\"); end"                
+                    line_list[i+1] = ' begin ' + line_list[i+1] + f" $display(\"achieve node: {block}\"); end"                
 
         elif 'else' in line_list[i] and 'if ' not in line_list[i]:      # 处理else语句
             if 'begin' in line_list[i]:
@@ -319,7 +319,7 @@ def always_process(line, num):                             # 处理always块,lin
                     line_list[i] = else_process_1(line_list[i])
                 else:
                     else_process_2(line_list[i])
-                    line_list[i+1] = ' begin ' + line_list[i+1] + f"$display(\"achieve node: {block}\"); end"
+                    line_list[i+1] = ' begin ' + line_list[i+1] + f" $display(\"achieve node: {block}\"); end"
 
         elif 'if' in line_list[i] and 'else ' in line_list[i]:
             if 'begin' in line_list[i]:
@@ -329,7 +329,7 @@ def always_process(line, num):                             # 处理always块,lin
                     line_list[i] = else_if_process_1(line_list[i])
                 else:
                     else_if_process_2(line_list[i])
-                    line_list[i+1] = ' begin ' + line_list[i+1] + f"$display(\"achieve node: {block}\"); end"
+                    line_list[i+1] = ' begin ' + line_list[i+1] + f" $display(\"achieve node: {block}\"); end"
 
         # case语句处理较为复杂，注意verilog代码语法进入的处理分支是否对应
         elif 'case' in line_list[i] and 'endcase' not in line_list[i]:                       # 处理case语句

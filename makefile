@@ -1,9 +1,13 @@
-# 可调参数，默认case1
-CASE := case1
+# 目标.v文件名
+CASE := usb_phy
+
+# 仿真参数
+SEED := 8
+NUM_CYCLES := 8000
 
 # 目标路径生成参数
-DEEP := 4
-TARGET_NODE := 3,1,0,1
+DEEP := 1
+TARGET_NODE := 54,0,1,0
 RESET := rst
 
 # 工程根目录（根据实际情况修改）
@@ -29,9 +33,13 @@ VCD_FILE = $(RTL_DIR)/$(CASE)/wave.vcd
 WAVE_FILE = $(RTL_DIR)/$(CASE)/wave
 SIM_FILE = $(RTL_DIR)/$(CASE)/sim.log
 
-
+.PHONY: sim path clean
 # 默认目标：生成testbench
-all: $(TB_FILE) $(DUT_FILE)
+all: $(SRC_DIR) $(DUT_FILE)
+
+# 创建目录
+$(SRC_DIR):
+	mkdir -p $(SRC_DIR)
 
 # 运行pre_process.py，生成预处理后的Verilog文件
 $(PRE_FILE): pre_process.py
@@ -40,9 +48,9 @@ $(PRE_FILE): pre_process.py
 	@echo "generate $(CASE)_1.v finish."
 
 # 使用预处理后的文件运行tb_generator.py，生成testbench文件
-$(TB_FILE): $(PRE_FILE) tb_generator.py
+tb: $(PRE_FILE) tb_generator.py
 	@echo "Generating testbench..."
-	python3 tb_generator.py
+	python3 tb_generator.py $(CASE) $(NUM_CYCLES)
 	@echo "generate $(CASE)_tb.v finish."
 
 # 使用pre_process.py生成的文件后运行CDFG_1_1.py，并保存输出到CDFG_FILE
@@ -59,11 +67,15 @@ $(DUT_FILE): $(CDFG_FILE) CDFG_display_1.py
 
 # 独立的 simulation 目标，执行 simulation.py
 sim: simulation.py
-	python3 simulation.py $(CASE)
+	python3 simulation.py $(CASE) $(SEED)
 	@echo "Simulation finish."
 	@echo "Starting coverage analysis..."
 	python3 coverage.py $(CASE)
 	@echo "Coverage analysis finish."
+
+z3def: z3_signal_define.py
+	python3 z3_signal_define.py $(CASE)
+	@echo "Generate z3 signal define finish."
 
 path: target_path_1_1.py
 	python3 target_path_1_1.py $(DEEP) $(TARGET_NODE) $(RESET)

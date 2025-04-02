@@ -1,0 +1,26 @@
+生成的输入激励序列：
+
+Cycle 0:
+  in     = 38 (0x26)
+  clk    = clk__0 ([未完全约束])
+  rst    = rst__0 ([未完全约束])
+
+Cycle 1:
+  in     = 245 (0xF5)
+  clk    = clk__1 ([未完全约束])
+  rst    = rst__1 ([未完全约束])
+
+Cycle 2:
+  in     = 110 (0x6E)
+  clk    = clk__2 ([未完全约束])
+  rst    = rst__2 ([未完全约束])
+
+Cycle 3:
+  in     = in__3 ([未完全约束])
+  clk    = clk__3 ([未完全约束])
+  rst    = rst__3 ([未完全约束])
+
+Cycle 4:
+  in     = in__4 ([未完全约束])
+  clk    = clk__4 ([未完全约束])
+  rst    = rst__4 ([未完全约束])
