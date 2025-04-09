@@ -1,12 +1,12 @@
 生成的输入激励序列：
 
-Cycle 0:
+Cycle 0: 2297
   clk    = clk__0 ([未完全约束])
   rst    = rst__0 ([未完全约束])
   phy_tx_mode = phy_tx_mode__0 ([未完全约束])
   rxd    = rxd__0 ([未完全约束])
   rxdp   = rxdp__0 ([未完全约束])
-  rxdn   = 0 (0x0)
+  rxdn   = 1 (0x1)
   DataOut_i = DataOut_i__0 ([未完全约束])
   TxValid_i = TxValid_i__0 ([未完全约束])
 
@@ -16,7 +16,7 @@ Cycle 1:
   phy_tx_mode = phy_tx_mode__1 ([未完全约束])
   rxd    = rxd__1 ([未完全约束])
   rxdp   = 0 (0x0)
-  rxdn   = 0 (0x0)
+  rxdn   = 1 (0x1)
   DataOut_i = DataOut_i__1 ([未完全约束])
   TxValid_i = TxValid_i__1 ([未完全约束])
 
@@ -26,7 +26,7 @@ Cycle 2:
   phy_tx_mode = phy_tx_mode__2 ([未完全约束])
   rxd    = rxd__2 ([未完全约束])
   rxdp   = 0 (0x0)
-  rxdn   = 0 (0x0)
+  rxdn   = 1 (0x1)
   DataOut_i = DataOut_i__2 ([未完全约束])
   TxValid_i = TxValid_i__2 ([未完全约束])
 

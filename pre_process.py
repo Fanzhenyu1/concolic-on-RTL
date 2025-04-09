@@ -146,7 +146,7 @@ def process_verilog_file(file_path):
         f.write(modified_content)
 
 def main(module_name):
-    # define_file = "d:/mylife_yanjiu/project/concolic_on_RTL/RTL/or1200_ICache/src/or1200_defines.v"  # 宏定义文件
+    # define_file = f"d:/mylife_yanjiu/project/concolic_on_RTL/RTL/{module_name}/src/adbg_tap_defines.v"  # 宏定义文件
     verilog_file = f"d:/mylife_yanjiu/project/concolic_on_RTL/RTL/{module_name}/src/{module_name}.v"  # Verilog 源代码
     output_file = f"d:/mylife_yanjiu/project/concolic_on_RTL/RTL/{module_name}/{module_name}_1.v"  # 处理后的输出文件
     # defines = parse_defines(define_file)

@@ -10,7 +10,7 @@ def parse_verilog_signals(verilog_file):
     
     # 此处修改Verilog文件的编码格式，一般推荐使用utf-8
     # with open(verilog_file, 'r', encoding='utf-8') as file:
-    with open(verilog_file, 'r', encoding='gb2312') as file:
+    with open(verilog_file, 'r', encoding='utf-8') as file:
         for line in file:
             match = signal_pattern.findall(line.strip())
             for signal_type, width, name in match:
@@ -41,7 +41,7 @@ def parse_verilog_new(verilog_file):
     )
 
     # 读取文件内容并预处理
-    with open(verilog_file, 'r', encoding='gb2312') as file:
+    with open(verilog_file, 'r', encoding='utf-8') as file:
         content = file.read()
 
     # 移除单行注释

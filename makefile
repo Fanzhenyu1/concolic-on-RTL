@@ -1,13 +1,13 @@
 # 目标.v文件名
-CASE := usb_phy
+CASE := AES-T1000
 
 # 仿真参数
 SEED := 8
-NUM_CYCLES := 8000
+NUM_CYCLES := 4000
 
 # 目标路径生成参数
-DEEP := 1
-TARGET_NODE := 54,0,1,0
+DEEP := 3
+TARGET_NODE := 4,1,0,1
 RESET := rst
 
 # 工程根目录（根据实际情况修改）
@@ -47,6 +47,11 @@ $(PRE_FILE): pre_process.py
 	python3 pre_process.py $(CASE)
 	@echo "generate $(CASE)_1.v finish."
 
+verilog_format: $(PRE_FILE)
+	@echo "Verilog_fromat continue..."
+	verible-verilog-format --inplace "/d:/mylife_yanjiu/project/concolic_on_RTL/RTL/$(CASE)/$(CASE)_1.v"
+	@echo "Verilog_fromat finish."
+
 # 使用预处理后的文件运行tb_generator.py，生成testbench文件
 tb: $(PRE_FILE) tb_generator.py
 	@echo "Generating testbench..."
@@ -54,7 +59,7 @@ tb: $(PRE_FILE) tb_generator.py
 	@echo "generate $(CASE)_tb.v finish."
 
 # 使用pre_process.py生成的文件后运行CDFG_1_1.py，并保存输出到CDFG_FILE
-$(CDFG_FILE): $(PRE_FILE) CDFG_1_1.py
+$(CDFG_FILE): verilog_format CDFG_1_1.py
 	@echo "Generating CDFG..."
 	python3 CDFG_1_1.py $(CASE)
 	@echo "generate CDFG finish."

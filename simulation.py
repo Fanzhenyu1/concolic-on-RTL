@@ -48,7 +48,7 @@ def main_process(module_name, seed_value=0):
         # "cd d:/mylife_yanjiu/project/concolic_on_RTL/RTL/case1/",  # 打开路径
         f"iverilog -g2012 -o {fl_path}wave {fl_path}dut.v {fl_path}{module_name}_tb.v",  # 第一条命令
         f"vvp -n {fl_path}wave +SEED={seed_value} lxt2 > {fl_path}sim.log"                         # 第二条命令（假设需仿真）
-        # ,"gtkwave wave.vcd"                         # 第三条命令（假设需查看波形）
+        # ,f"gtkwave {fl_path}wave.vcd"                         # 第三条命令（假设需查看波形）
     ]
 
     for cmd in commands:

@@ -15,25 +15,27 @@ def code_preprocess(flpath,file1):                  # 预处理verilog代码
     processed_lines = []
 
     # with open(flpath + file1, encoding='utf-8') as f1:
-    with open(flpath + file1) as f1:
+    with open(flpath + file1, 'r', encoding='utf-8') as f1:
         lines = f1.readlines()
         for index, line in enumerate(lines):
             # line = line.replace("  ", " ")           # 去除多余空格
             line = re.sub(r" {2,}", " ", line)         # 合并连续空格
             if '//' in line:                        # 去除文本中的注释
-                line = line.split('//')[0].strip()
+                line = line.split('//')[0].strip() + '\n'
             if line == '\n':                        # 去除多余空行
                 line = line.replace('\n', '')
             # line = re.sub(r"  ", " ", line)       # 去除多余空格
             while 'module' in line and 'endmodule' not in line:  # 处理模块声明
                 if line.count('(')!= line.count(')'):
-                    line = line.split('//')[0].strip()
+                    line = line.split('//')[0].strip() + '\n'
                     line = line.replace('\n', ' ')
                     index = index + 1
                     line += lines[index]
                     lines[index] = ''
                     continue
                 else:
+                    line = line.replace('\t', '  ')  # 将制表符转换为两个空格
+                    line = re.sub(r" {2,}", " ", line)
                     break
             while 'always ' in line:                # 处理always块，使其只有一行
                 if 'begin' not in line:
@@ -230,7 +232,7 @@ def else_if_process_1(str):               # 处理else if语句
     block = block + ',1'                                    # if(condition) action; 
     stack_condition.append(block)                           # if(condition) begin
     stack_kuohao = []
-    str_m = str.replace('else', '').replace('if', '').replace('end', '').strip()
+    str_m = str.replace('else', '').replace(' if', '').replace('end', '').strip()
     m = len(str_m)
     for j in range(m):
         if str_m[j] == '(':
@@ -301,7 +303,7 @@ def always_process(line, num):                             # 处理always块,lin
         elif 'begin' in line_list[i] and 'end' in line_list[i] and '$display' in line_list[i] and 'case' not in line_list[i]:
             continue
 
-        elif 'if ' in line_list[i] and 'else ' not in line_list[i]:   # 处理if语句+begin
+        elif ( 'if ' in line_list[i] or 'if(' in line_list[i] ) and 'else ' not in line_list[i]:   # 处理if语句+begin
             if 'begin' in line_list[i]:
                 line_list[i] = if_process(line_list[i])
             else:
@@ -311,7 +313,7 @@ def always_process(line, num):                             # 处理always块,lin
                     if_process_2(line_list[i])
                     line_list[i+1] = ' begin ' + line_list[i+1] + f" $display(\"achieve node: {block}\"); end"                
 
-        elif 'else' in line_list[i] and 'if ' not in line_list[i]:      # 处理else语句
+        elif 'else' in line_list[i] and 'if ' not in line_list[i] and 'if(' not in line_list[i]:      # 处理else语句
             if 'begin' in line_list[i]:
                 line_list[i] = else_process(line_list[i])
             else:
@@ -321,7 +323,7 @@ def always_process(line, num):                             # 处理always块,lin
                     else_process_2(line_list[i])
                     line_list[i+1] = ' begin ' + line_list[i+1] + f" $display(\"achieve node: {block}\"); end"
 
-        elif 'if' in line_list[i] and 'else ' in line_list[i]:
+        elif ( 'if ' in line_list[i] or 'if(' in line_list[i] ) and 'else ' in line_list[i]:
             if 'begin' in line_list[i]:
                 line_list[i] = else_if_process(line_list[i])
             else:
