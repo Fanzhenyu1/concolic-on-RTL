@@ -46,43 +46,52 @@ def parse_verilog_const(const_str, in_comparison=False):
       - 否则，对于1位常量返回布尔 True/False，其它情况返回 BitVecVal 表达式。
     """
     const_str = const_str.strip()
-    # 匹配二进制常量，例如 1'b1 或 1'b0
-    m = re.match(r"^(\d+)'[bB]([01]+)$", const_str)
+    # 匹配二进制常量，例如 8'b1010_1100 或 1'b1
+    m = re.match(r"^(\d+)'[bB]([01_]+)$", const_str)
     if m:
         width, bits = m.groups()
+        # 去掉下划线
+        bitstr = bits.replace("_", "")
+        val = int(bitstr, 2)
         if in_comparison:
-            return f"BitVecVal({int(bits, 2)}, {width})"
+            return f"BitVecVal({val}, {width})"
         else:
             if width == "1":
-                return "True" if bits == "1" else "False"
+                return "True" if val == 1 else "False"
             else:
-                return f"BitVecVal({int(bits, 2)}, {width})"
-    # 匹配十进制常量，例如 2'd3
-    m = re.match(r"^(\d+)'[dD](\d+)$", const_str)
+                return f"BitVecVal({val}, {width})"
+
+    # 匹配十进制常量，例如 16'd123_456
+    m = re.match(r"^(\d+)'[dD]([\d_]+)$", const_str)
     if m:
         width, number = m.groups()
+        numstr = number.replace("_", "")
+        val = int(numstr, 10)
         if in_comparison:
-            return f"BitVecVal({number}, {width})"
+            return f"BitVecVal({val}, {width})"
         else:
             if width == "1":
-                return "True" if number == "1" else "False"
+                return "True" if val == 1 else "False"
             else:
-                return f"BitVecVal({number}, {width})"
-    # 匹配十六进制常量，例如 8'hFF
-    m = re.match(r"^(\d+)'[hH]([0-9a-fA-F]+)$", const_str)
+                return f"BitVecVal({val}, {width})"
+    # 匹配十六进制常量，例如 128'h00112233_44556677_8899aabb_ccddeeff
+    m = re.match(r"^(\d+)'[hH]([0-9A-Fa-f_]+)$", const_str)
     if m:
         width, hex_num = m.groups()
+        # 去掉所有下划线
+        hex_digits = hex_num.replace("_", "")
         if in_comparison:
-            return f"BitVecVal({int(hex_num, 16)}, {width})"
+            return f"BitVecVal({int(hex_digits, 16)}, {width})"
         else:
             if width == "1":
-                return "True" if int(hex_num, 16) == 1 else "False"
+                # 单比特时可以映射到布尔
+                return "True" if int(hex_digits, 16) == 1 else "False"
             else:
-                return f"BitVecVal({int(hex_num, 16)}, {width})"
+                return f"BitVecVal({int(hex_digits, 16)}, {width})"
     # 纯数字（无宽度信息）的情况
     if const_str.isdigit():
         if in_comparison:
-            return f"BitVecVal({const_str}, WIDTH)"  # WIDTH根据实际情况设定
+            return f"BitVecVal({const_str}, 1)"  # WIDTH根据实际情况设定
         else:
             return "True" if const_str != "0" else "False"
     return const_str

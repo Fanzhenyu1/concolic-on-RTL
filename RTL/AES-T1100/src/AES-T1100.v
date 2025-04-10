@@ -1,29 +1,32 @@
 module top(
-    input clk,
-    input rst,
-    input [127:0] state,
-    input [127:0] key,
+    input wire clk,
+    input wire rst,
+    input wire [127:0] state,
+    input wire [127:0] key,
 	output [63:0] Capacitance
     );
 
 	reg Tj_Trig;
-	reg State0, State1, State2, State3;
+	reg State0;
+ 	reg State1;
+ 	reg State2;
+ 	reg State3;
 	
 	always @(rst, state)
 	begin
-		if (rst == 1) begin
-			State0 <= 0;
-			State1 <= 0;
-			State2 <= 0;
-			State3 <= 0; 
+		if (rst == 1'b1) begin
+			State0 <= 1'b0;
+			State1 <= 1'b0;
+			State2 <= 1'b0;
+			State3 <= 1'b0; 
 		end else if (state == 128'h3243f6a8_885a308d_313198a2_e0370734) begin
-			State0 <= 1;
-		end else if ((state == 128'h00112233_44556677_8899aabb_ccddeeff) && (State0 == 1)) begin
-			State1 <= 1;
-		end else if ((state == 128'h0) && (State1 == 1)) begin
-			State2 <= 1;
-		end else if ((state == 128'h1) && (State2 == 1)) begin
-			State3 <= 1;
+			State0 <= 1'b1;
+		end else if ((state == 128'h00112233_44556677_8899aabb_ccddeeff) && (State0 == 1'b1)) begin
+			State1 <= 1'b1;
+		end else if ((state == 128'h0) && (State1 == 1'b1)) begin
+			State2 <= 1'b1;
+		end else if ((state == 128'h1) && (State2 == 1'b1)) begin
+			State3 <= 1'b1;
 		end
 	end
 
@@ -33,6 +36,7 @@ module top(
 	end
 
 	reg [19:0] lfsr_stream;
+	wire [19:0] lfsr;
 	wire d0; 
 	wire [127:0] data; 
     assign data = state;
