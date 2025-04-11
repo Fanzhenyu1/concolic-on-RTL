@@ -1,5 +1,5 @@
 # 目标.v文件名
-CASE := usb_phy
+CASE := AES-T1000
 
 # 仿真参数
 SEED := 8

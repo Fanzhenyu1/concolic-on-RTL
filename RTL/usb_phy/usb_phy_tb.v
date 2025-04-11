@@ -71,20 +71,20 @@ initial begin
         rxdn = $random & 1'd1;
         DataOut_i = $random & 8'd255;
         TxValid_i = $random & 1'd1;
-        // if(i == 2301) begin rxdn = 1'b0; end
-        // if(i == 2302) begin rxdp = 1'b0; rxdn = 1'b1; end
-        // if(i == 2303) begin rxdp = 1'b0; rxdn = 1'b1; end
-        // if(i == 2304) begin rxdp = 1'b0; rxdn = 1'b0; end
-        // if(i >= 2295 && i < 2315) TxValid_i = 1'b0;
-        // if(i == 2308) begin rxdn = 1'b0; end
-        // if(i == 2309) begin rxdp = 1'b0; rxdn = 1'b1; end
-        // if(i == 2310) begin rxdp = 1'b0; rxdn = 1'b1; end
-        // if(i == 2311) begin rxdp = 1'b0; rxdn = 1'b0; end
+        if(i == 2301) begin rxdn = 1'b0; end
+        if(i == 2302) begin rxdp = 1'b0; rxdn = 1'b1; end
+        if(i == 2303) begin rxdp = 1'b0; rxdn = 1'b1; end
+        if(i == 2304) begin rxdp = 1'b0; rxdn = 1'b0; end
+        if(i >= 2295 && i < 2315) TxValid_i = 1'b0;
+        if(i == 2308) begin rxdn = 1'b0; end
+        if(i == 2309) begin rxdp = 1'b0; rxdn = 1'b1; end
+        if(i == 2310) begin rxdp = 1'b0; rxdn = 1'b1; end
+        if(i == 2311) begin rxdp = 1'b0; rxdn = 1'b0; end
 
-        // if(i == 2316) begin rxdn = 1'b0; end
-        // if(i == 2317) begin rxdp = 1'b0; rxdn = 1'b1; end
-        // if(i == 2318) begin rxdp = 1'b0; rxdn = 1'b1; end
-        // if(i == 2319) begin rxdp = 1'b0; rxdn = 1'b0; end
+        if(i == 2316) begin rxdn = 1'b0; end
+        if(i == 2317) begin rxdp = 1'b0; rxdn = 1'b1; end
+        if(i == 2318) begin rxdp = 1'b0; rxdn = 1'b1; end
+        if(i == 2319) begin rxdp = 1'b0; rxdn = 1'b0; end
         #10;
     end
     $finish;
