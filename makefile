@@ -1,14 +1,14 @@
 # 目标.v文件名
-CASE := AES-T1000
+CASE := usb_phy
 
 # 仿真参数
 SEED := 8
-NUM_CYCLES := 4000
+NUM_CYCLES := 100
 
 # 目标路径生成参数
-DEEP := 1
-TARGET_NODE := 59,0,1,3,1
-RESET := rst
+DEEP := 3
+TARGET_NODE :=  1,0,1
+RESET := rst_i
 
 # 工程根目录（根据实际情况修改）
 RTL_DIR = /d/mylife_yanjiu/project/concolic_on_RTL/RTL

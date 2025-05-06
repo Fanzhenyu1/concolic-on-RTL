@@ -408,6 +408,10 @@ def monitored_task(module_name):
     cdfg_list, inout_port = main_process(pre_code)                          # 主体处理函数,输出list类型
 
     print(cdfg_list)
+    # 新增文件写入代码（开始）
+    with open(f'{flpath}temp.txt', 'w') as f:
+        f.write(str(cdfg_list))
+
     return cdfg_list, inout_port
 
 
@@ -429,6 +433,7 @@ def main(module_name):
     gc.collect()
     print("Execution time in seconds: ", execution_time)
     print(f"峰值内存占用：{monitor.peak_memory:.2f} KB")
+
     return cdfg_list, inout_port
 
 if __name__ == '__main__':

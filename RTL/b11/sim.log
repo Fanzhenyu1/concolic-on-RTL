@@ -1,0 +1,472 @@
+VCD info: dumpfile wave.vcd opened for output.
+achieve node: 1,1
+achieve node: 1,1,1
+********Period           0********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,1
+********Period           1********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period           2********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period           3********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period           4********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3
+achieve node: 1,1,0,3,1
+achieve node: 1,1,0,3,1,1
+********Period           5********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,9
+achieve node: 1,1,0,9,0
+********Period           6********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period           7********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period           8********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period           9********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,1
+********Period          10********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,4
+achieve node: 1,1,0,4,1
+********Period          11********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,5,0
+********Period          12********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,7,0
+********Period          13********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,8
+achieve node: 1,1,0,8,0,0,0
+********Period          14********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,9
+achieve node: 1,1,0,9,0
+********Period          15********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          16********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period          17********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period          18********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period          19********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period          20********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period          21********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          22********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,1
+********Period          23********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,4
+achieve node: 1,1,0,4,0
+********Period          24********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,5
+achieve node: 1,1,0,5,1
+********Period          25********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,6,0
+********Period          26********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,8
+achieve node: 1,1,0,8,1
+********Period          27********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,9
+achieve node: 1,1,0,9,1
+********Period          28********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          29********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period          30********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          31********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period          32********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period          33********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          34********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period          35********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period          36********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          37********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period          38********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period          39********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          40********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period          41********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          42********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,1
+********Period          43********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,4
+achieve node: 1,1,0,4,1
+********Period          44********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,5,0
+********Period          45********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,7,0
+********Period          46********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,8
+achieve node: 1,1,0,8,0,0,1
+********Period          47********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,9
+achieve node: 1,1,0,9,0
+********Period          48********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period          49********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          50********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,1
+********Period          51********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,4
+achieve node: 1,1,0,4,1
+********Period          52********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,5,0
+********Period          53********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,7,0
+********Period          54********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,8
+achieve node: 1,1,0,8,0,1
+********Period          55********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,9
+achieve node: 1,1,0,9,1
+********Period          56********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period          57********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          58********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period          59********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          60********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period          61********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period          62********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period          63********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          64********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period          65********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          66********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period          67********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period          68********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          69********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,1
+********Period          70********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,4
+achieve node: 1,1,0,4,0
+********Period          71********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,5
+achieve node: 1,1,0,5,1
+********Period          72********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,6,0
+********Period          73********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,8
+achieve node: 1,1,0,8,0,1
+********Period          74********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,9
+achieve node: 1,1,0,9,1
+********Period          75********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period          76********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          77********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period          78********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          79********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,1
+********Period          80********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,4
+achieve node: 1,1,0,4,0
+********Period          81********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,5
+achieve node: 1,1,0,5,1
+********Period          82********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,6,0
+********Period          83********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,8
+achieve node: 1,1,0,8,0,1
+********Period          84********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,9
+achieve node: 1,1,0,9,1
+********Period          85********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          86********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period          87********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          88********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period          89********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          90********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,0
+********Period          91********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+********Period          92********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,0
+********Period          93********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,3,0,1
+********Period          94********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,4
+achieve node: 1,1,0,4,0
+********Period          95********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,5
+achieve node: 1,1,0,5,1
+********Period          96********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,6,0
+********Period          97********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,8
+achieve node: 1,1,0,8,0,1
+********Period          98********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,9
+achieve node: 1,1,0,9,1
+********Period          99********
+achieve node: 1,1
+achieve node: 1,1,0
+achieve node: 1,1,0,2
+achieve node: 1,1,0,2,1
+d:/mylife_yanjiu/project/concolic_on_RTL/RTL/b11/b11_tb.v:44: $finish called at 1010000 (1ps)

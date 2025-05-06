@@ -71,8 +71,10 @@ always @(posedge clk or posedge rst) begin
     end else begin
         $display("achieve node: 8,1,0");  
         case (state) 
-        2'd0: begin  if (ic_en & icqmem_cycstb_i) begin 
-            $display("achieve node: 8,1,0,1");  $display("achieve node: 8,1,0,1,1");	state <= 2'd1;	saved_addr_r <= start_addr;	hitmiss_eval <= 1'b1;	load <= 1'b1;	cache_inhibit <= icqmem_ci_i;	last_eval_miss <= 0; 
+        2'd0: begin  
+            $display("achieve node: 8,1,0,1");  
+            if (ic_en & icqmem_cycstb_i) begin 
+            $display("achieve node: 8,1,0,1,1");	state <= 2'd1;	saved_addr_r <= start_addr;	hitmiss_eval <= 1'b1;	load <= 1'b1;	cache_inhibit <= icqmem_ci_i;	last_eval_miss <= 0; 
             end else begin $display("achieve node: 8,1,0,1,0");	hitmiss_eval <= 1'b0; load <= 1'b0;	cache_inhibit <= 1'b0; end		end 
         2'd1: begin 
             temp_addr = saved_addr_r; $display("achieve node: 8,1,0,2"); 
@@ -94,8 +96,9 @@ always @(posedge clk or posedge rst) begin
             saved_addr_r <= temp_addr;
         end
         2'd2: begin  
+            $display("achieve node: 8,1,0,3");  
             if (!ic_en) begin 
-                $display("achieve node: 8,1,0,3");  $display("achieve node: 8,1,0,3,1"); state <= 2'd0; saved_addr_r <= start_addr; hitmiss_eval <= 1'b0; load <= 1'b0; 
+                $display("achieve node: 8,1,0,3,1"); state <= 2'd0; saved_addr_r <= start_addr; hitmiss_eval <= 1'b0; load <= 1'b0; 
             end else if (biudata_valid && (|cnt)) begin 
                 $display("achieve node: 8,1,0,3,0,1"); cnt <= cnt - 4'd4; saved_addr_r <= {saved_addr_r[31:4], saved_addr_r[4-1:2] + 2'b1, saved_addr_r[1:0]}; 
             end else if (biudata_valid) begin 

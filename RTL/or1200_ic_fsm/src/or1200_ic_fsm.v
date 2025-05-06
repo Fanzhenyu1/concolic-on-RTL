@@ -183,16 +183,11 @@ reg	[31:0]			temp_addr;
 
 	     // Check for stopped cache loads
 	         // instruction cache turned-off
-	     if ((!ic_en) ||
-		 // fetch aborted (usually caused by IMMU)
-		 (hitmiss_eval & !icqmem_cycstb_i) ||	
-		 (biudata_error) ||  // fetch terminated with an error
-		 // fetch from cache-inhibited page
-		 (cache_inhibit & biudata_valid)) begin	
-		state <=  2'd0;
-		hitmiss_eval <=  1'b0;
-		load <=  1'b0;
-		cache_inhibit <=  1'b0;
+	     if ((!ic_en) || (hitmiss_eval & !icqmem_cycstb_i) || (biudata_error) || (cache_inhibit & biudata_valid)) begin	
+			state <=  2'd0;
+			hitmiss_eval <=  1'b0;
+			load <=  1'b0;
+			cache_inhibit <=  1'b0;
 	     end // if ((!ic_en) ||...	     
 	     // fetch missed, wait for first fetch and continue filling line
 	     else if (tagcomp_miss & biudata_valid) begin	
@@ -230,24 +225,21 @@ reg	[31:0]			temp_addr;
 	     // abort because IC has just been turned off
              if (!ic_en) begin
 		// invalidate before IC can be turned on
-		state <=  2'd0;	
+				state <=  2'd0;	
                 saved_addr_r <=  start_addr;
                 hitmiss_eval <=  1'b0;
                 load <=  1'b0;
              end
 	     // refill ack, more fetchs to come
 	     else if (biudata_valid && (|cnt)) begin	
-		cnt <=  cnt - `OR1200_ICLS'd4;
-		saved_addr_r <= {saved_addr_r[31:`OR1200_ICLS], saved_addr_r[`OR1200_ICLS-1:2] + 2'b1, saved_addr_r[1:0]};
-		//saved_addr_r[`OR1200_ICLS-1:2] 
-		// <= saved_addr_r[`OR1200_ICLS-1:2] + 1;
+			cnt <=  cnt - `OR1200_ICLS'd4;
+			saved_addr_r <= {saved_addr_r[31:`OR1200_ICLS], saved_addr_r[`OR1200_ICLS-1:2] + 2'b1, saved_addr_r[1:0]};
 	     end
-	     // last fetch of line refill
 	     else if (biudata_valid) begin
-		state <=  2'd0;
-		saved_addr_r <=  start_addr;
-		hitmiss_eval <=  1'b0;
-		load <=  1'b0;
+			state <=  2'd0;
+			saved_addr_r <=  start_addr;
+			hitmiss_eval <=  1'b0;
+			load <=  1'b0;
 	     end
 	  end
 	  default:

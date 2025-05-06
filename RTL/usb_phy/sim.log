@@ -261191,6 +261191,7 @@ achieve node: 9,1,0
 achieve node: 10,1
 achieve node: 10,1,0
 achieve node: 10,1,0,0
+achieve node: 10,1,0,0,1
 achieve node: 11,1
 achieve node: 11,1,0
 achieve node: 11,1,0,0
@@ -261344,6 +261345,7 @@ achieve node: 11,1,0,0
 achieve node: 10,1
 achieve node: 10,1,0
 achieve node: 10,1,0,0
+achieve node: 10,1,0,0,1
 achieve node: 9,1
 achieve node: 9,1,0
 achieve node: 8,1
@@ -261658,6 +261660,7 @@ achieve node: 9,1,0
 achieve node: 10,1
 achieve node: 10,1,0
 achieve node: 10,1,0,0
+achieve node: 10,1,0,0,1
 achieve node: 11,1
 achieve node: 11,1,0
 achieve node: 11,1,0,0
@@ -261808,7 +261811,8 @@ achieve node: 11,1,0
 achieve node: 11,1,0,0
 achieve node: 10,1
 achieve node: 10,1,0
-achieve node: 10,1,0,1
+achieve node: 10,1,0,0
+achieve node: 10,1,0,0,1
 achieve node: 9,1
 achieve node: 9,1,0
 achieve node: 8,1
@@ -262045,7 +262049,8 @@ achieve node: 11,1,0,0
 achieve node: 11,1,0,0,1
 achieve node: 10,1
 achieve node: 10,1,0
-achieve node: 10,1,0,1
+achieve node: 10,1,0,0
+achieve node: 10,1,0,0,1
 achieve node: 9,1
 achieve node: 9,1,0
 achieve node: 9,1,0,1
@@ -262121,7 +262126,8 @@ achieve node: 9,1
 achieve node: 9,1,0
 achieve node: 10,1
 achieve node: 10,1,0
-achieve node: 10,1,0,1
+achieve node: 10,1,0,0
+achieve node: 10,1,0,0,1
 achieve node: 11,1
 achieve node: 11,1,0
 achieve node: 11,1,0,1
@@ -262269,7 +262275,8 @@ achieve node: 11,1,0
 achieve node: 11,1,0,1
 achieve node: 10,1
 achieve node: 10,1,0
-achieve node: 10,1,0,1
+achieve node: 10,1,0,0
+achieve node: 10,1,0,0,1
 achieve node: 9,1
 achieve node: 9,1,0
 achieve node: 8,1
@@ -262340,7 +262347,8 @@ achieve node: 9,1
 achieve node: 9,1,0
 achieve node: 10,1
 achieve node: 10,1,0
-achieve node: 10,1,0,1
+achieve node: 10,1,0,0
+achieve node: 10,1,0,0,1
 achieve node: 11,1
 achieve node: 11,1,0
 achieve node: 11,1,0,1
@@ -262963,7 +262971,8 @@ achieve node: 11,1,0
 achieve node: 11,1,0,1
 achieve node: 10,1
 achieve node: 10,1,0
-achieve node: 10,1,0,1
+achieve node: 10,1,0,0
+achieve node: 10,1,0,0,1
 achieve node: 9,1
 achieve node: 9,1,0
 achieve node: 9,1,0,1
@@ -263253,7 +263262,8 @@ achieve node: 9,1
 achieve node: 9,1,0
 achieve node: 10,1
 achieve node: 10,1,0
-achieve node: 10,1,0,1
+achieve node: 10,1,0,0
+achieve node: 10,1,0,0,1
 achieve node: 11,1
 achieve node: 11,1,0
 achieve node: 11,1,0,1
@@ -263343,13 +263353,11 @@ achieve node: 13,1
 achieve node: 12,1
 achieve node: 12,1,1
 achieve node: 7,1
-achieve node: 32,0,6
-achieve node: 32,0,6,1
 achieve node: 54,0
 achieve node: 54,0,1,0
-********Period        2294********
 achieve node: 32,0,6
 achieve node: 32,0,6,1
+********Period        2294********
 achieve node: 69,1
 achieve node: 69,1,0
 achieve node: 69,1,0,0
@@ -459067,4 +459075,4 @@ achieve node: 7,1
 achieve node: 54,0
 achieve node: 54,0,2
 achieve node: 54,0,2,0
-d:/mylife_yanjiu/project/concolic_on_RTL/RTL/usb_phy/usb_phy_tb.v:90: $finish called at 40010000 (1ps)
+d:/mylife_yanjiu/project/concolic_on_RTL/RTL/usb_phy/usb_phy_tb.v:97: $finish called at 40010000 (1ps)

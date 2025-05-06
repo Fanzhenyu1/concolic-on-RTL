@@ -96,35 +96,35 @@ def parse_verilog_const(const_str, in_comparison=False):
             return "True" if const_str != "0" else "False"
     return const_str
 
-def split_top_level(condition, op):
+def split_top_level(s: str, delim: str):
     """
-    按 op 分割 condition，但只在顶层（括号深度为 0）分割。
-    如果能分割则返回子表达式列表，否则返回 None。
+    只在 括号深度 == 0 时 按 delim 切分 s。
+    如果能切出多于 1 段，就返回那几段，否则返回 None。
+    支持 delim 是多字符的运算符（例如 '==', '!='）。
     """
     parts = []
+    buf = []
     depth = 0
-    last_index = 0
     i = 0
-    op_len = len(op)
-    found = False
-    while i < len(condition):
-        c = condition[i]
+    L = len(s)
+    D = len(delim)
+    while i < L:
+        c = s[i]
         if c == '(':
             depth += 1
         elif c == ')':
             depth -= 1
-        # 仅在深度为0时查找 op
-        if depth == 0 and condition[i:i+op_len] == op:
-            parts.append(condition[last_index:i].strip())
-            last_index = i + op_len
-            i += op_len
-            found = True
+        # 只有在最外层才尝试匹配 delim
+        if depth == 0 and s[i:i+D] == delim:
+            parts.append(''.join(buf).strip())
+            buf = []
+            i += D
             continue
+        buf.append(c)
         i += 1
-    if found:
-        parts.append(condition[last_index:].strip())
-        return parts
-    return None
+    if buf:
+        parts.append(''.join(buf).strip())
+    return parts if len(parts) > 1 else None
 
 def parse_condition(condition, in_comparison=False):
     """
@@ -134,7 +134,7 @@ def parse_condition(condition, in_comparison=False):
       - False：裸变量转换为 (var != 0) 以得到布尔表达式。
     """
     condition = condition.strip()
-
+    pass
     # 如果整个表达式被外层括号包裹，则剥除之
     if condition.startswith('(') and condition.endswith(')'):
         depth = 0
@@ -149,33 +149,7 @@ def parse_condition(condition, in_comparison=False):
                     break
         if remove:
             return parse_condition(condition[1:-1].strip(), in_comparison)
-    
-    # 先尝试顶层查找逻辑二元操作符（&&、||）
-    for op in ['&&', '||']:
-        parts = split_top_level(condition, op)
-        if parts is not None:
-            parsed_parts = [parse_condition(p, in_comparison=False) for p in parts]
-            if op == '&&':
-                return f"And({', '.join(parsed_parts)})"
-            else:
-                return f"Or({', '.join(parsed_parts)})"
-            
-    # 再查找顶层的按位运算符（&、|）
-    for op in ['&', '|']:
-        parts = split_top_level(condition, op)
-        if parts is not None:
-            parsed_parts = [parse_condition(p, in_comparison) for p in parts]
-            if in_comparison:
-                # 在比较上下文中保持位向量运算
-                join_op = f" {op} "
-                return "(" + join_op.join(parsed_parts) + ")"
-            else:
-                # 否则转换为逻辑运算
-                if op == '&':
-                    return f"And({', '.join(parsed_parts)})"
-                else:
-                    return f"Or({', '.join(parsed_parts)})"
-    
+
     # 处理比较运算符（==, !=, >, <, >=, <=）
     cmp_ops = [
         ('>=', '>='),
@@ -192,13 +166,61 @@ def parse_condition(condition, in_comparison=False):
             parsed_lhs = parse_condition(lhs.strip(), in_comparison=True)
             parsed_rhs = parse_condition(rhs.strip(), in_comparison=True)
             return f"({parsed_lhs} {op_symbol} {parsed_rhs})"
+
+    # 先尝试顶层查找逻辑二元操作符（&&、||）
+    for op in ['&&', '||']:
+        parts = split_top_level(condition, op)
+        if parts is not None:
+            parsed_parts = [parse_condition(p, in_comparison=False) for p in parts]
+            if op == '&&':
+                return f"And({', '.join(parsed_parts)})"
+            else:
+                return f"Or({', '.join(parsed_parts)})"
+
+    # 处理归约操作符，如 |(...) 或 &(...)
+    if re.match(r'^[|&]\(.*\)$', condition):
+        op = condition[0]
+        m = re.search(r'\((.*)\)$', condition)
+        if m:
+            inner_expr = m.group(1).strip()
+            parsed_inner = parse_condition(inner_expr, in_comparison=True)
+            # if op == '|':
+            #     return f"({parsed_inner} != BitVecVal(0, {parsed_inner}.size()))"
+            # else:
+            #     return f"({parsed_inner} == BitVecVal((1 << {parsed_inner}.size()) - 1, {parsed_inner}.size()))"
+            
+            if op == '|':
+                return (f"If({parsed_inner} == BitVecVal(0, {parsed_inner}.size()), "
+                    f"BitVecVal(0, 1), BitVecVal(1, 1))")
+            else:
+                return (f"If({parsed_inner} == BitVecVal((1 << {parsed_inner}.size()) - 1, {parsed_inner}.size()), "
+                    f"BitVecVal(1, 1), BitVecVal(0, 1))")            
+
+    # 再查找顶层的按位运算符（&、|）
+    for op in ['&', '|']:
+        parts = split_top_level(condition, op)
+        if parts is not None:
+            parsed_parts = [parse_condition(p.strip(), in_comparison) for p in parts]
+            if in_comparison:
+                # 在比较上下文中保持位向量运算
+                join_op = f" {op} "
+                return "(" + join_op.join(parsed_parts) + ")"
+            else:
+                # 否则转换为逻辑运算
+                if op == '&':
+                    return f"And({', '.join(parsed_parts)})"
+                else:
+                    return f"Or({', '.join(parsed_parts)})"
+    
+
     
     # 处理逻辑非 ! 运算符
     if condition.startswith('!'):
         if in_comparison:
             # 对于位向量，在比较上下文中，!X 按 Verilog 语义返回 1'b1 当 X==0，否则返回 1'b0
             inner = parse_condition(condition[1:].strip(), in_comparison=True)
-            return f"If({inner} == 0, BitVecVal(1, 1), BitVecVal(0, 1))"
+            # return f"If({inner} == 0, BitVecVal(1, 1), BitVecVal(0, 1))"
+            return f"({inner} ^ BitVecVal(1,1))"  # 位异或实现取反
         else:
             inner = parse_condition(condition[1:].strip(), in_comparison=False)
             return f"Not({inner})"
@@ -208,17 +230,11 @@ def parse_condition(condition, in_comparison=False):
         inner = parse_condition(condition[1:].strip(), in_comparison=True)
         return f"(~{inner})"
     
-    # 处理归约操作符，如 |(...) 或 &(...)
-    if re.match(r'^[|&]\(.*\)$', condition):
-        op = condition[0]
-        m = re.search(r'\((.*)\)$', condition)
-        if m:
-            inner = parse_condition(m.group(1).strip(), in_comparison=False)
-            if op == '|':
-                return f"({inner} != 0)"
-            else:
-                return f"({inner} == BitVecVal((1 << {inner}.size()) - 1, {inner}.size()))"
-    
+    # 处理 syms_dict["sig"][msb:lsb]
+    m = re.match(r'^(syms_dict\["\w+"\])\[(\d+):(\d+)\]$', condition)
+    if m:
+        var_expr, msb, lsb = m.groups()
+        return f"Extract({msb}, {lsb}, {var_expr})"
     # 处理位选择，例如 a[3:0]
     m = re.match(r'^(\w+)\[(\d+)(?::(\d+))?\]$', condition)
     if m:
@@ -229,12 +245,18 @@ def parse_condition(condition, in_comparison=False):
             return f"Extract({msb}, {lsb}, {var})"
     
     # 处理位拼接，例如 {a, b}
-    if condition.startswith('{'):
-        m = re.findall(r'\{([^}]+)\}', condition)
-        if m:
-            parts = m[0].split(',')
-            parsed_parts = [parse_condition(p.strip(), in_comparison=False) for p in parts]
-            return f"Concat({', '.join(parsed_parts)})"
+    # if condition.startswith('{'):
+    #     m = re.findall(r'\{([^}]+)\}', condition)
+    #     if m:
+    #         parts = m[0].split(',')
+    #         parsed_parts = [parse_condition(p.strip(), in_comparison=False) for p in parts]
+    #         return f"Concat({', '.join(parsed_parts)})"
+    if condition.startswith('{') and condition.endswith('}'):
+        inner = condition[1:-1].strip()
+        parts = split_top_level(inner, ',')
+        # 对每一部分都保持位向量形式解析
+        parsed_parts = [parse_condition(p.strip(), in_comparison=True) for p in parts]
+        return f"Concat({', '.join(parsed_parts)})"
     
     # # 处理按位运算符 & 和 |（非 && 和 ||）
     # if '&' in condition and '&&' not in condition:
@@ -266,14 +288,48 @@ def parse_condition(condition, in_comparison=False):
         return parse_verilog_const(condition, in_comparison)
     
     # 处理裸变量，例如 tagcomp_miss、state 等
-    if re.match(r'^[A-Za-z_]\w*$', condition):
+    if (re.match(r'^[A-Za-z_]\w*$', condition) or re.match(r'^syms_dict\["[A-Za-z_]\w*"\]$', condition)):
         if in_comparison:
             return condition
         else:
             return f"({condition} != 0)"
-    
+    pass
     return condition
 
+def is_boolean_expr(s: str) -> bool:
+    """
+    检测给定的 parse_condition() 输出字符串 s
+    是否表示一个 BoolExpr（而不是纯 BitVecExpr）。
+    规则：
+      1) 剥外层括号
+      2) 看最外层是否是 And(, Or(, Not(, If(
+      3) 用 split_top_level 在深度0找比较运算符
+    """
+    t = s.strip()
+    # 剥掉外层括号
+    while t.startswith('(') and t.endswith(')'):
+        # 确保括号匹配
+        depth = 0
+        for i,ch in enumerate(t):
+            if ch=='(': depth+=1
+            elif ch==')': depth-=1
+            if depth==0 and i < len(t)-1:
+                break
+        else:
+            t = t[1:-1].strip()
+            continue
+        break
+
+    # 逻辑函数
+    if any(t.startswith(pref) for pref in ('And(', 'Or(', 'Not(', 'If(')):
+        return True
+
+    # 顶层比较运算
+    for op in ('==','!=','<=','>=','<','>'):
+        if split_top_level(t, op):
+            return True
+
+    return False
 
 # Parse Verilog action (e.g., "a <= 2'b0; b <= c? 2'b1 : d;")
 def parse_action(assignment):
@@ -294,6 +350,10 @@ def parse_action(assignment):
     # 右侧表达式解析
     parsed_rhs = parse_condition(rhs, in_comparison=True)  # 解析右侧表达式
     
+    # 2) 如果它是 BoolExpr，就 wrap 一下
+    if is_boolean_expr(parsed_rhs):
+        parsed_rhs = f"If({parsed_rhs}, BitVecVal(1,1), BitVecVal(0,1))"
+
     # 赋值转换为 Z3 等式约束
     return f"{lhs} == {parsed_rhs}"
 
@@ -384,105 +444,76 @@ def main_z3_solver(constraint_stack, signal_inout, signal_midle):
 
 # Example usage
 # constraint_stack1 = ["r_in == 6'b101010", "a <= r_in;", "b < a & 6'b100100", "b <= 6'b100110"]
-constraint_stack2 = ["(st2 == 4'h5)", 'st2 = st;', "st = state + 4'h2;", "state <= 4'h0;"]
+# constraint_stack2 = ["byte_controller_bit_controller_cmd_stop <= (byte_controller_core_cmd == 4'b0010);"]
+
+# wb_clk_i = BitVec('wb_clk_i', 1)
+# rst_i = BitVec('rst_i', 1)
+# wb_adr_i = BitVec('wb_adr_i', 3)
+# wb_dat_i = BitVec('wb_dat_i', 8)
+# wb_dat_o = BitVec('wb_dat_o', 8)
+# wb_we_i = BitVec('wb_we_i', 1)
+# wb_stb_i = BitVec('wb_stb_i', 1)
+# wb_cyc_i = BitVec('wb_cyc_i', 1)
+# wb_ack_o = BitVec('wb_ack_o', 1)
+# wb_inta_o = BitVec('wb_inta_o', 1)
+# scl_pad_i = BitVec('scl_pad_i', 1)
+# scl_pad_o = BitVec('scl_pad_o', 1)
+# scl_padoen_o = BitVec('scl_padoen_o', 1)
+# sda_pad_i = BitVec('sda_pad_i', 1)
+# sda_pad_o = BitVec('sda_pad_o', 1)
+# sda_padoen_o = BitVec('sda_padoen_o', 1)
+# prer = BitVec('prer', 16)
+# ctr = BitVec('ctr', 8)
+# txr = BitVec('txr', 8)
+# cr = BitVec('cr', 8)
+# rxack = BitVec('rxack', 1)
+# tip = BitVec('tip', 1)
+# irq_flag = BitVec('irq_flag', 1)
+# i2c_busy = BitVec('i2c_busy', 1)
+# al = BitVec('al', 1)
+# wb_wacc = BitVec('wb_wacc', 1)
+# sta = BitVec('sta', 1)
+# sto = BitVec('sto', 1)
+# rd = BitVec('rd', 1)
+# wr = BitVec('wr', 1)
+# ack = BitVec('ack', 1)
+# iack = BitVec('iack', 1)
+# byte_controller_dout = BitVec('byte_controller_dout', 8)
+# byte_controller_i2c_busy = BitVec('byte_controller_i2c_busy', 1)
+# byte_controller_i2c_al = BitVec('byte_controller_i2c_al', 1)
+# byte_controller_cmd_ack = BitVec('byte_controller_cmd_ack', 1)
+# byte_controller_ack_out = BitVec('byte_controller_ack_out', 1)
+# byte_controller_core_cmd = BitVec('byte_controller_core_cmd', 4)
+# byte_controller_core_txd = BitVec('byte_controller_core_txd', 1)
+# byte_controller_sr = BitVec('byte_controller_sr', 8)
+# byte_controller_shift = BitVec('byte_controller_shift', 1)
+# byte_controller_ld = BitVec('byte_controller_ld', 1)
+# byte_controller_dcnt = BitVec('byte_controller_dcnt', 3)
+# byte_controller_c_state = BitVec('byte_controller_c_state', 5)
+# byte_controller_target = BitVec('byte_controller_target', 1)
+# byte_controller_bit_controller_scl_o = BitVec('byte_controller_bit_controller_scl_o', 1)
+# byte_controller_bit_controller_sda_o = BitVec('byte_controller_bit_controller_sda_o', 1)
+# byte_controller_bit_controller_cmd_ack = BitVec('byte_controller_bit_controller_cmd_ack', 1)
+# byte_controller_bit_controller_busy = BitVec('byte_controller_bit_controller_busy', 1)
+# byte_controller_bit_controller_al = BitVec('byte_controller_bit_controller_al', 1)    
+# byte_controller_bit_controller_dout = BitVec('byte_controller_bit_controller_dout', 1)
+# byte_controller_bit_controller_scl_oen = BitVec('byte_controller_bit_controller_scl_oen', 1)
+# byte_controller_bit_controller_sda_oen = BitVec('byte_controller_bit_controller_sda_oen', 1)
+# byte_controller_bit_controller_sSCL = BitVec('byte_controller_bit_controller_sSCL', 1)
+# byte_controller_bit_controller_sSDB = BitVec('byte_controller_bit_controller_sSDB', 1)
+# byte_controller_bit_controller_dscl_oen = BitVec('byte_controller_bit_controller_dscl_oen', 1)
+# byte_controller_bit_controller_sda_chk = BitVec('byte_controller_bit_controller_sda_chk', 1)
+# byte_controller_bit_controller_clk_en = BitVec('byte_controller_bit_controller_clk_en', 1)
+# byte_controller_bit_controller_cnt = BitVec('byte_controller_bit_controller_cnt', 16) 
+# byte_controller_bit_controller_c_state = BitVec('byte_controller_bit_controller_c_state', 17)
+# byte_controller_bit_controller_dSCL = BitVec('byte_controller_bit_controller_dSCL', 1)
+# byte_controller_bit_controller_dSDA = BitVec('byte_controller_bit_controller_dSDA', 1)
+# byte_controller_bit_controller_sta_condition = BitVec('byte_controller_bit_controller_sta_condition', 1)
+# byte_controller_bit_controller_sto_condition = BitVec('byte_controller_bit_controller_sto_condition', 1)
+# byte_controller_bit_controller_cmd_stop = BitVec('byte_controller_bit_controller_cmd_stop', 1)   
 
 
-# rst = BitVec('rst', 1)
-# phy_tx_mode = BitVec('phy_tx_mode', 1)
-# usb_rst = BitVec('usb_rst', 1)
-# txdp = BitVec('txdp', 1)
-# txdn = BitVec('txdn', 1)
-# txoe = BitVec('txoe', 1)
-# rxd = BitVec('rxd', 1)
-# rxdp = BitVec('rxdp', 1)
-# rxdn = BitVec('rxdn', 1)
-# DataOut_i = BitVec('DataOut_i', 8)
-# TxValid_i = BitVec('TxValid_i', 1)
-# TxReady_o = BitVec('TxReady_o', 1)
-# RxValid_o = BitVec('RxValid_o', 1)
-# RxActive_o = BitVec('RxActive_o', 1)
-# RxError_o = BitVec('RxError_o', 1)
-# DataIn_o = BitVec('DataIn_o', 8)
-# LineState_o = BitVec('LineState_o', 2)
-# rst_cnt = BitVec('rst_cnt', 5)
-# i_tx_phy_TxReady_o = BitVec('i_tx_phy_TxReady_o', 1)
-# i_tx_phy_state = BitVec('i_tx_phy_state', 3)
-# i_tx_phy_next_state = BitVec('i_tx_phy_next_state', 3)
-# i_tx_phy_tx_ready_d = BitVec('i_tx_phy_tx_ready_d', 1)
-# i_tx_phy_ld_sop_d = BitVec('i_tx_phy_ld_sop_d', 1)
-# i_tx_phy_ld_data_d = BitVec('i_tx_phy_ld_data_d', 1)
-# i_tx_phy_ld_eop_d = BitVec('i_tx_phy_ld_eop_d', 1)
-# i_tx_phy_tx_ip = BitVec('i_tx_phy_tx_ip', 1)
-# i_tx_phy_tx_ip_sync = BitVec('i_tx_phy_tx_ip_sync', 1)
-# i_tx_phy_bit_cnt = BitVec('i_tx_phy_bit_cnt', 3)
-# i_tx_phy_hold_reg = BitVec('i_tx_phy_hold_reg', 8)
-# i_tx_phy_hold_reg_d = BitVec('i_tx_phy_hold_reg_d', 8)
-# i_tx_phy_sd_raw_o = BitVec('i_tx_phy_sd_raw_o', 1)
-# i_tx_phy_data_done = BitVec('i_tx_phy_data_done', 1)
-# i_tx_phy_sft_done = BitVec('i_tx_phy_sft_done', 1)
-# i_tx_phy_sft_done_r = BitVec('i_tx_phy_sft_done_r', 1)
-# i_tx_phy_ld_data = BitVec('i_tx_phy_ld_data', 1)
-# i_tx_phy_one_cnt = BitVec('i_tx_phy_one_cnt', 3)
-# i_tx_phy_stuff = BitVec('i_tx_phy_stuff', 1)
-# i_tx_phy_sd_bs_o = BitVec('i_tx_phy_sd_bs_o', 1)
-# i_tx_phy_sd_nrzi_o = BitVec('i_tx_phy_sd_nrzi_o', 1)
-# i_tx_phy_append_eop = BitVec('i_tx_phy_append_eop', 1)
-# i_tx_phy_append_eop_sync1 = BitVec('i_tx_phy_append_eop_sync1', 1)
-# i_tx_phy_append_eop_sync2 = BitVec('i_tx_phy_append_eop_sync2', 1)
-# i_tx_phy_append_eop_sync3 = BitVec('i_tx_phy_append_eop_sync3', 1)
-# i_tx_phy_append_eop_sync4 = BitVec('i_tx_phy_append_eop_sync4', 1)
-# i_tx_phy_txdp = BitVec('i_tx_phy_txdp', 1)
-# i_tx_phy_txdn = BitVec('i_tx_phy_txdn', 1)
-# i_tx_phy_txoe_r1 = BitVec('i_tx_phy_txoe_r1', 1)
-# i_tx_phy_txoe_r2 = BitVec('i_tx_phy_txoe_r2', 1)
-# i_tx_phy_txoe = BitVec('i_tx_phy_txoe', 1)
-# i_rx_phy_rxd_s0 = BitVec('i_rx_phy_rxd_s0', 1)
-# i_rx_phy_rxd_s1 = BitVec('i_rx_phy_rxd_s1', 1)
-# i_rx_phy_rxd_s = BitVec('i_rx_phy_rxd_s', 1)
-# i_rx_phy_rxdp_s0 = BitVec('i_rx_phy_rxdp_s0', 1)
-# i_rx_phy_rxdp_s1 = BitVec('i_rx_phy_rxdp_s1', 1)
-# i_rx_phy_rxdp_s = BitVec('i_rx_phy_rxdp_s', 1)
-# i_rx_phy_rxdp_s_r = BitVec('i_rx_phy_rxdp_s_r', 1)
-# i_rx_phy_rxdn_s0 = BitVec('i_rx_phy_rxdn_s0', 1)
-# i_rx_phy_rxdn_s1 = BitVec('i_rx_phy_rxdn_s1', 1)
-# i_rx_phy_rxdn_s = BitVec('i_rx_phy_rxdn_s', 1)
-# i_rx_phy_rxdn_s_r = BitVec('i_rx_phy_rxdn_s_r', 1)
-# i_rx_phy_synced_d = BitVec('i_rx_phy_synced_d', 1)
-# i_rx_phy_rxd_r = BitVec('i_rx_phy_rxd_r', 1)
-# i_rx_phy_rx_en = BitVec('i_rx_phy_rx_en', 1)
-# i_rx_phy_rx_active = BitVec('i_rx_phy_rx_active', 1)
-# i_rx_phy_bit_cnt = BitVec('i_rx_phy_bit_cnt', 3)
-# i_rx_phy_rx_valid1 = BitVec('i_rx_phy_rx_valid1', 1)
-# i_rx_phy_rx_valid = BitVec('i_rx_phy_rx_valid', 1)
-# i_rx_phy_shift_en = BitVec('i_rx_phy_shift_en', 1)
-# i_rx_phy_sd_r = BitVec('i_rx_phy_sd_r', 1)
-# i_rx_phy_sd_nrzi = BitVec('i_rx_phy_sd_nrzi', 1)
-# i_rx_phy_hold_reg = BitVec('i_rx_phy_hold_reg', 8)
-# i_rx_phy_one_cnt = BitVec('i_rx_phy_one_cnt', 3)
-# i_rx_phy_dpll_state = BitVec('i_rx_phy_dpll_state', 2)
-# i_rx_phy_dpll_next_state = BitVec('i_rx_phy_dpll_next_state', 2)
-# i_rx_phy_fs_ce_d = BitVec('i_rx_phy_fs_ce_d', 1)
-# i_rx_phy_fs_ce = BitVec('i_rx_phy_fs_ce', 1)
-# i_rx_phy_fs_state = BitVec('i_rx_phy_fs_state', 3)
-# i_rx_phy_fs_next_state = BitVec('i_rx_phy_fs_next_state', 3)
-# i_rx_phy_rx_valid_r = BitVec('i_rx_phy_rx_valid_r', 1)
-# i_rx_phy_sync_err_d = BitVec('i_rx_phy_sync_err_d', 1)
-# i_rx_phy_sync_err = BitVec('i_rx_phy_sync_err', 1)
-# i_rx_phy_bit_stuff_err = BitVec('i_rx_phy_bit_stuff_err', 1)
-# i_rx_phy_se0_r = BitVec('i_rx_phy_se0_r', 1)
-# i_rx_phy_byte_err = BitVec('i_rx_phy_byte_err', 1)
-# i_rx_phy_se0_s = BitVec('i_rx_phy_se0_s', 1)
-# i_rx_phy_fs_ce_r1 = BitVec('i_rx_phy_fs_ce_r1', 1)
-# i_rx_phy_fs_ce_r2 = BitVec('i_rx_phy_fs_ce_r2', 1)
-
-in_1 = BitVec('in_1', 8)
-out = BitVec('out', 8)
-clk = BitVec('clk', 1)
-state = BitVec('state', 4)
-st = BitVec('st', 4)
-st2 = BitVec('st2', 4)
-
-main_z3_solver(constraint_stack2, {}, {})
+# main_z3_solver(constraint_stack2, {}, {})
 
 # for i in range(len(constraint_stack_list)):
 #     constraint_stack = constraint_stack_list[i]

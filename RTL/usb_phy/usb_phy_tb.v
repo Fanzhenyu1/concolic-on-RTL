@@ -75,11 +75,18 @@ initial begin
         if(i == 2302) begin rxdp = 1'b0; rxdn = 1'b1; end
         if(i == 2303) begin rxdp = 1'b0; rxdn = 1'b1; end
         if(i == 2304) begin rxdp = 1'b0; rxdn = 1'b0; end
+
         if(i >= 2295 && i < 2315) TxValid_i = 1'b0;
+
         if(i == 2308) begin rxdn = 1'b0; end
         if(i == 2309) begin rxdp = 1'b0; rxdn = 1'b1; end
         if(i == 2310) begin rxdp = 1'b0; rxdn = 1'b1; end
         if(i == 2311) begin rxdp = 1'b0; rxdn = 1'b0; end
+
+        // if(i == 2312) begin rxdn = 1'b0; end
+        // if(i == 2313) begin rxdp = 1'b0; rxdn = 1'b1; end
+        // if(i == 2314) begin rxdp = 1'b0; rxdn = 1'b1; end
+        // if(i == 2315) begin rxdp = 1'b0; rxdn = 1'b0; end        
 
         if(i == 2316) begin rxdn = 1'b0; end
         if(i == 2317) begin rxdp = 1'b0; rxdn = 1'b1; end

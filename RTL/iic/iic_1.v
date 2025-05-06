@@ -27,11 +27,11 @@ module i2c_master_top (
   output reg wb_ack_o;
   output reg wb_inta_o;
   input wire scl_pad_i;
-  output reg scl_pad_o;
-  output reg scl_padoen_o;
+  output wire scl_pad_o;
+  output wire scl_padoen_o;
   input wire sda_pad_i;
-  output reg sda_pad_o;
-  output reg sda_padoen_o;
+  output wire sda_pad_o;
+  output wire sda_padoen_o;
   reg [7:0] wb_dat_o;
   reg wb_ack_o;
   reg wb_inta_o;
@@ -295,7 +295,9 @@ module i2c_master_top (
                 4'b1000: begin
                   byte_controller_bit_controller_c_state <= 17'b0_0000_0010_0000_0000;
                 end
-                default: byte_controller_bit_controller_c_state <= 17'b0_0000_0000_0000_0000;
+                default: begin
+                  byte_controller_bit_controller_c_state <= 17'b0_0000_0000_0000_0000;
+                end
               endcase
               byte_controller_bit_controller_scl_oen <= byte_controller_bit_controller_scl_oen;
               byte_controller_bit_controller_sda_oen <= byte_controller_bit_controller_sda_oen;
